@@ -14,6 +14,9 @@
 #include "nvs_flash.h"
 #include "nvs.h"
 
+// Tambahan pustaka generator acak hardware ESP32
+#include "esp_random.h"
+
 static const char* TAG = "wifi_controller";
 /**
  * @brief Stores current state of Wi-Fi interface
@@ -26,11 +29,43 @@ static void wifi_event_handler(void *event_handler_arg, esp_event_base_t event_b
 }
 
 /**
+ * @brief Mengubah MAC Address AP agar menggunakan OUI Huawei (28:6E:D4)
+ *        dengan 3 byte terakhir yang selalu diacak secara dinamis otomatis.
+ */
+void wifictl_set_vendor_huawei_random_mac() {
+    uint8_t current_mac[6];
+    
+    // 1. Ambil MAC Address interface AP yang saat ini sedang aktif
+    if (esp_wifi_get_mac(WIFI_IF_AP, current_mac) == ESP_OK) {
+        
+        // 2. Ganti 3 byte pertama (OUI) dengan kode registrasi resmi milik Huawei (28:6E:D4)
+        current_mac[0] = 0x28;
+        current_mac[1] = 0x6E;
+        current_mac[2] = 0xD4;
+        
+        // 3. Acak 3 byte terakhir secara mandiri menggunakan modul hardware generator ESP32
+        current_mac[3] = esp_random() % 256;
+        current_mac[4] = esp_random() % 256;
+        current_mac[5] = esp_random() % 256;
+        
+        // 4. Terapkan MAC Address baru yang sudah diacak kustom vendornya ke sistem wifi
+        esp_err_t err = esp_wifi_set_mac(WIFI_IF_AP, current_mac);
+        if (err == ESP_OK) {
+            ESP_LOGI(TAG, "Vendor MAC sukses diubah ke HUAWEI (Semi-Random) -> %02X:%02X:%02X:%02X:%02X:%02X",
+                     current_mac[0], current_mac[1], current_mac[2], 
+                     current_mac[3], current_mac[4], current_mac[5]);
+        } else {
+            ESP_LOGE(TAG, "Gagal mengubah MAC Address ke vendor Huawei (Error: %s)", esp_err_to_name(err));
+        }
+    }
+}
+
+/**
  * @brief Initializes Wi-Fi interface into APSTA mode and starts it.
  *
  * @attention This function should be called only once.
  */
-static void wifi_init_apsta(){
+static void wifi_init_apsta()){
     ESP_ERROR_CHECK(esp_netif_init());
 
     esp_netif_create_default_wifi_ap();
@@ -56,7 +91,12 @@ void wifictl_ap_start(wifi_config_t *wifi_config) {
         wifi_init_apsta();
     }
 
+    // Memasukkan konfigurasi wifi asli ke hardware AP
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, wifi_config));
+    
+    // Menjalankan fungsi pengubah identitas vendor Huawei + Acak
+    wifictl_set_vendor_huawei_random_mac();
+
     ESP_LOGI(TAG, "AP started with SSID=%s", wifi_config->ap.ssid);
 }
 
@@ -86,7 +126,7 @@ void wifictl_sta_connect_to_ap(const wifi_ap_record_t *ap_record, const char pas
             .pmf_cfg.required = false
         },
     };
-    mempcpy(sta_wifi_config.sta.ssid, ap_record->ssid, 32);
+    memcpy(sta_wifi_config.sta.ssid, ap_record->ssid, 32);
 
     if(password != NULL){
         if(strlen(password) >= 64) {
@@ -133,21 +173,76 @@ void wifictl_set_channel(uint8_t channel){
     esp_wifi_set_channel(channel, WIFI_SECOND_CHAN_NONE);
 }
 
-void wifictl_get_mgmt_creds(char* ssid, char* pass) {
-    nvs_handle_t nvs_h;
-    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs_h);
+esp_err_t wifictl_get_mgmt_creds(char *out_ssid, size_t ssid_len, char *out_password, size_t password_len) {
+    nvs_handle_t nvs;
+    esp_err_t err = nvs_open("storage", NVS_READONLY, &nvs);
     if (err == ESP_OK) {
-        size_t s_len = 32, p_len = 64;
-        if (nvs_get_str(nvs_h, "ap_ssid", ssid, &s_len) != ESP_OK) {
-            strcpy(ssid, CONFIG_MGMT_AP_SSID);
+        // Try to read ssid
+        size_t required = ssid_len;
+        esp_err_t r = nvs_get_str(nvs, "mgmt_ssid", out_ssid, &required);
+        if (r == ESP_OK) {
+            if (required == 0) {
+                // empty value -> fallback
+                strncpy(out_ssid, CONFIG_MGMT_AP_SSID, ssid_len);
+                out_ssid[ssid_len - 1] = '\0';
+            }
+        } else if (r == ESP_ERR_NVS_NOT_FOUND) {
+            strncpy(out_ssid, CONFIG_MGMT_AP_SSID, ssid_len);
+            out_ssid[ssid_len - 1] = '\0';
+        } else if (r == ESP_ERR_NVS_INVALID_LENGTH) {
+            // buffer too small: ensure truncation
+            // attempt to read required length then truncate
+            size_t actual = 0;
+            nvs_get_str(nvs, "mgmt_ssid", NULL, &actual);
+            if (actual > 0) {
+                size_t to_copy = ssid_len - 1;
+                nvs_get_str(nvs, "mgmt_ssid", out_ssid, &required);
+                out_ssid[to_copy] = '\0';
+            } else {
+                strncpy(out_ssid, CONFIG_MGMT_AP_SSID, ssid_len);
+                out_ssid[ssid_len - 1] = '\0';
+            }
+        } else {
+            strncpy(out_ssid, CONFIG_MGMT_AP_SSID, ssid_len);
+            out_ssid[ssid_len - 1] = '\0';
         }
-        if (nvs_get_str(nvs_h, "ap_pass", pass, &p_len) != ESP_OK) {
-            strcpy(pass, CONFIG_MGMT_AP_PASSWORD);
+
+        // Try to read password
+        required = password_len;
+        r = nvs_get_str(nvs, "mgmt_password", out_password, &required);
+        if (r == ESP_OK) {
+            if (required == 0) {
+                strncpy(out_password, CONFIG_MGMT_AP_PASSWORD, password_len);
+                out_password[password_len - 1] = '\0';
+            }
+        } else if (r == ESP_ERR_NVS_NOT_FOUND) {
+            strncpy(out_password, CONFIG_MGMT_AP_PASSWORD, password_len);
+            out_password[password_len - 1] = '\0';
+        } else if (r == ESP_ERR_NVS_INVALID_LENGTH) {
+            size_t actual = 0;
+            nvs_get_str(nvs, "mgmt_password", NULL, &actual);
+            if (actual > 0) {
+                size_t to_copy = password_len - 1;
+                nvs_get_str(nvs, "mgmt_password", out_password, &required);
+                out_password[to_copy] = '\0';
+            } else {
+                strncpy(out_password, CONFIG_MGMT_AP_PASSWORD, password_len);
+                out_password[password_len - 1] = '\0';
+            }
+        } else {
+            strncpy(out_password, CONFIG_MGMT_AP_PASSWORD, password_len);
+            out_password[password_len - 1] = '\0';
         }
-        nvs_close(nvs_h);
+
+        nvs_close(nvs);
+        return ESP_OK;
     } else {
-        strcpy(ssid, CONFIG_MGMT_AP_SSID);
-        strcpy(pass, CONFIG_MGMT_AP_PASSWORD);
+        // NVS not available -> fallback to build-time defaults
+        strncpy(out_ssid, CONFIG_MGMT_AP_SSID, ssid_len);
+        out_ssid[ssid_len - 1] = '\0';
+        strncpy(out_password, CONFIG_MGMT_AP_PASSWORD, password_len);
+        out_password[password_len - 1] = '\0';
+        return err;
     }
 }
 
@@ -157,14 +252,14 @@ void wifictl_mgmt_ap_start() {
 
     char current_ssid[32] = {0};
     char current_pass[64] = {0};
-    wifictl_get_mgmt_creds(current_ssid, current_pass);
+    wifictl_get_mgmt_creds(current_ssid, sizeof(current_ssid), current_pass, sizeof(current_pass));
 
     wifi_config_t mgmt_wifi_config = {
         .ap = {
             .ssid_len = strlen(current_ssid),
             .channel = CONFIG_MGMT_AP_CHANNEL,
             .max_connection = CONFIG_MGMT_AP_MAX_CONNECTIONS,
-            .authmode = (strlen(current_pass) >= 8) ? WIFI_AUTH_WPA2_PSK : WIFI_AUTH_OPEN
+            .authmode = WIFI_AUTH_WPA2_PSK
         },
     };
     memcpy(mgmt_wifi_config.ap.ssid, current_ssid, 32);
