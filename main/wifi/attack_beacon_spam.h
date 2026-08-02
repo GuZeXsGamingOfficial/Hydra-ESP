@@ -4,7 +4,7 @@
  * @date 8-5-2026
  * @copyright Copyright (c) 2026
  *
- * @brief Beacon spam attack modes and controls.
+ * @brief Modifikasi Kustom: Duplikasi SSID & BSSID lokal dengan WPA2-PSK Enkripsi Global.
  */
 
 #ifndef ATTACK_BEACON_SPAM_H
@@ -20,15 +20,16 @@ typedef enum {
 } beacon_spam_mode_t;
 
 /**
- * @brief Starts the beacon spam attack with a specific mode.
- * @param count Number of fake APs to generate (Max 100)
- * @param mode The style of SSIDs to broadcast
+ * @brief Memulai serangan Beacon Spam Kustom yang meniru SSID & MAC (BSSID) asli sekitar
+ *        menggunakan enkripsi keamanan WPA2-PSK dan satu kata sandi global tetap.
+ * @param count Parameter dipertahankan agar tidak merusak kompabilitas fungsi pemanggil Web UI
+ * @param mode Parameter dipertahankan agar tidak merusak kompabilitas fungsi pemanggil Web UI
  */
 void attack_beacon_spam_start(uint8_t count, beacon_spam_mode_t mode);
 
 /**
- * @brief Stops the beacon spam attack.
+ * @brief Menghentikan serangan Beacon Spam.
  */
-void attack_beacon_spam_stop();
+void attack_beacon_spam_stop(void);
 
 #endif
