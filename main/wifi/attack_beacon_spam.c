@@ -3,7 +3,7 @@
  * @author SameerAlSahab (sameeralsahab54@gmail.com)
  * @date 8-5-2026
  * 
- * @brief Modifikasi Dual Kontrol Akurat (Bebas Lock Web UI):
+ * @brief Modifikasi Dual Kontrol Otomatis (Stabil & Bebas Lock Web UI):
  *        - BEACON SPAM (Massal): Deauth 10 detik -> Kloning SEMUA AP sekitar -> MAC Acak -> Durasi Web UI.
  *        - SUPER CLONE (Tunggal): Deauth 5 detik -> Kloning HANYA 1 Target Terpilih -> MAC Acak -> Durasi Web UI.
  *        Keduanya menggunakan keamanan WPA2, sandi kustom fX9!mK4$zQ2#vW9&tP7@jL2xN5*bV8%c.
@@ -46,7 +46,7 @@ static attack_state_t current_state = STATE_DEAUTH_HOPPING;
 
 // Penghitung biner ticks untuk durasi
 static uint32_t attack_execution_counter = 0;
-static uint32_t deauth_max_ticks = 100; // Default 10 detik (100 Ticks)
+static uint32_t deauth_max_ticks = 100; // Dinamis: 100 ticks (10s) atau 50 ticks (5s)
 static uint32_t beacon_max_ticks = 3000;
 
 // Kata sandi tunggal global kustom yang terkunci
