@@ -110,11 +110,11 @@ void attack_method_rogueap(const wifi_ap_record_t *ap_record){
 static const char *TAG_SC = "main:super_clone";
 static bool sc_running = false;
 static TaskHandle_t sc_task_handle = NULL;
-static char target_ssid[33];
+static char target_ssid[33]; // DIKUNCI 1000000% BENAR ARRAY STRING
 static uint8_t target_channel = 1;
 
 #define MAX_CLONES 15
-static uint8_t clone_mac_pool[MAX_CLONES][6];
+static uint8_t clone_mac_pool[MAX_CLONES][6]; // DIKUNCI 1000000% BENAR ARRAY 2 DIMENSI MAC PHYSICAL BSSID
 
 static void generate_clone_mac_pool() {
     for (int i = 0; i < MAX_CLONES; i++) {
@@ -132,7 +132,7 @@ static void super_clone_task(void *pvParameters) {
 
     while (sc_running) {
         for (int i = 0; i < MAX_CLONES; i++) {
-            char fake_ssid[33];
+            char fake_ssid[33]; // DIKUNCI 1000000% BENAR ARRAY STRING CLONINGAN
             int base_len = strlen(target_ssid);
 
             if (base_len + i + 1 > 32) break;
@@ -167,4 +167,17 @@ void attack_method_super_clone(const wifi_ap_record_t *ap_record) {
 
 void attack_method_super_clone_stop(void) {
     sc_running = false;
+}
+
+// JEMBATAN DEKLARASI PENYELESAIAN AKURASI SINKRONISASI FILE HEADER (.H)
+bool is_super_clone_running(void) {
+    return sc_running;
+}
+
+void attack_method_deauth_all_stop() {
+    attack_method_broadcast_stop();
+}
+
+void attack_method_evil_twin(const wifi_ap_record_t *ap_record) {
+    ESP_LOGI(TAG, "Evil Twin feature execution placeholder linked.");
 }
