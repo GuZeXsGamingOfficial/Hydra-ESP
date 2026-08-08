@@ -26,7 +26,7 @@ var currentAttackType     = -1;
 var defaultAttackMethodsHTML = "";
 
 /* ── Attack types that disconnect the management AP ── */
-/* For these, timer/countdown is shown only for beacon spam;
+/* For these, timer/countdown is shown only for deauth all;
  *  all others just show "initiated" + power-cycle warning if no timeout */
 var DISCONNECTS_MGMT_AP = [
     AttackTypeEnum.ATTACK_TYPE_DOS,
@@ -272,7 +272,7 @@ function updateConfigurableFields(el) {
             if (methodRow) methodRow.style.display = "none";
             break;
         case AttackTypeEnum.ATTACK_TYPE_BT_SPAM:
-            document.getElementById("attack_timeout").value = 5;s
+            document.getElementById("attack_timeout").value = 5;
             break;
         case AttackTypeEnum.ATTACK_TYPE_CLONE:
             document.getElementById("attack_timeout").value = 5;
@@ -363,7 +363,7 @@ function runAttack() {
     var infoEl      = document.getElementById("running-attack-info");
 
     if (attackType === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM) {
-        /* Full circular timer only for beacon spam */
+        /* Full circular timer only for deauth all */
         beaconWrap.style.display  = "block";
         simpleWrap.style.display  = "none";
         if (noTOHint) noTOHint.style.display = "none";
@@ -485,7 +485,7 @@ function showResult(status, attack_type, content_size, content) {
         break;
         case AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM:
             document.getElementById("result-body").innerHTML =
-            '<p style="color:var(--text-muted);">Beacon spam completed.</p>';
+            '<p style="color:var(--text-muted);">Deauth All completed.</p>';
         break;
         case AttackTypeEnum.ATTACK_TYPE_PROBE:
             document.getElementById("result-body").innerHTML =
@@ -880,7 +880,7 @@ function attackTypeName(t) {
         case AttackTypeEnum.ATTACK_TYPE_HANDSHAKE:   return "WPA Handshake Capture";
         case AttackTypeEnum.ATTACK_TYPE_PMKID:       return "Clientless PMKID";
         case AttackTypeEnum.ATTACK_TYPE_DOS:         return "Deauthentication (DoS)";
-        case AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM: return "Beacon Spam";
+        case AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM: return "Deauth All";
         case AttackTypeEnum.ATTACK_TYPE_PROBE:       return "Probe Request Spam";
         case AttackTypeEnum.ATTACK_TYPE_EVIL_TWIN:   return "Evil Twin";
         case AttackTypeEnum.ATTACK_TYPE_BT_SPAM:     return "BLE Spam";
