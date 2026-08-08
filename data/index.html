@@ -1,528 +1,1080 @@
 <!DOCTYPE html>
-<html lang="en" data-theme="dark">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>HydraESP</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="/style.css">
+  <title>GumilangKIT</title>
+
+  <style>
+    /* =========================================================
+       GumilangKIT - Single File Minimal Dark + Glass Accent
+       - Scoped to main dashboard only: body:not(.devil-twin)
+       - Keep all existing markup/IDs/classes/JS hooks intact.
+       ========================================================= */
+
+    :root{
+      --bg0:#050816;
+      --bg1:#071126;
+
+      --surface:rgba(255,255,255,.06);
+      --surface-2:rgba(255,255,255,.09);
+      --surface-hover:rgba(255,255,255,.12);
+
+      --border:rgba(255,255,255,.14);
+      --border-2:rgba(255,255,255,.24);
+
+      --text:#EAF2FF;
+      --text-muted:rgba(234,242,255,.72);
+
+      --accent:#4CC3FF; /* neon cyan */
+      --accent-2:#7C5CFF;
+      --accent-light:rgba(76,195,255,.22);
+
+      --danger:#FF4D6D;
+      --danger-bg:rgba(255,77,109,.12);
+
+      --success:#2DFFB7;
+
+      --warn-bg:rgba(255,200,0,.10);
+      --warn-border:rgba(255,200,0,.35);
+      --warn-text:#FFD56A;
+
+      --radius:14px;
+      --radius-sm:10px;
+
+      --blur:14px;
+      --shadow-soft: 0 10px 30px rgba(0,0,0,.35);
+      --shadow: 0 18px 50px rgba(0,0,0,.55);
+
+      --trans:180ms cubic-bezier(.2,.9,.2,1);
+    }
+
+    /* Main dashboard only */
+    body:not(.devil-twin){
+      background:
+        radial-gradient(1000px 600px at 20% -10%, rgba(124,92,255,.35), transparent 60%),
+        radial-gradient(900px 560px at 110% 0%, rgba(76,195,255,.28), transparent 55%),
+        radial-gradient(800px 560px at 40% 120%, rgba(45,255,183,.12), transparent 55%),
+        linear-gradient(180deg, var(--bg0), var(--bg1));
+      color: var(--text);
+      font-family: Inter, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      line-height: 1.55;
+      font-size: 14px;
+      -webkit-font-smoothing: antialiased;
+      text-rendering: optimizeLegibility;
+      margin: 0;
+      padding: 0;
+    }
+
+    body:not(.devil-twin) *{ box-sizing: border-box; }
+
+    body:not(.devil-twin) a{ color: inherit; }
+
+    /* Global sharp-corner kill-switch from old CSS; we keep the UI modern instead */
+    body:not(.devil-twin) button,
+    body:not(.devil-twin) input,
+    body:not(.devil-twin) select,
+    body:not(.devil-twin) textarea,
+    body:not(.devil-twin) .card,
+    body:not(.devil-twin) .info-box,
+    body:not(.devil-twin) .app-header,
+    body:not(.devil-twin) .tab-nav,
+    body:not(.devil-twin) .dialog-box,
+    body:not(.devil-twin) .disclaimer-agree-bar {
+      border-radius: var(--radius) !important;
+    }
+
+    /* Glass surfaces */
+    body:not(.devil-twin) .app-header,
+    body:not(.devil-twin) .tab-nav,
+    body:not(.devil-twin) .card,
+    body:not(.devil-twin) .info-box,
+    body:not(.devil-twin) #disclaimer-overlay,
+    body:not(.devil-twin) .dialog-box,
+    body:not(.devil-twin) .disclaimer-agree-bar{
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.14);
+      backdrop-filter: blur(var(--blur));
+      -webkit-backdrop-filter: blur(var(--blur));
+      box-shadow: var(--shadow-soft);
+    }
+
+    /* Layout */
+    body:not(.devil-twin) .app-header{
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      padding: 0 18px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      margin-bottom: 14px;
+    }
+
+    body:not(.devil-twin) .header-inner{
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 14px 0;
+    }
+
+    body:not(.devil-twin) .brand-name{
+      font-weight: 900;
+      font-size: 1.05rem;
+      letter-spacing: -0.3px;
+    }
+
+    body:not(.devil-twin) .brand-version{
+      display:block;
+      margin-top: 3px;
+      font-size: .74rem;
+      color: var(--text-muted);
+      font-weight: 650;
+    }
+
+    body:not(.devil-twin) .tab-nav{
+      display:flex;
+      gap: 10px;
+      max-width: 900px;
+      margin: 0 auto 10px;
+      padding: 10px;
+    }
+
+    body:not(.devil-twin) .tab-btn{
+      flex: 1;
+      background: transparent;
+      border: 1px solid rgba(255,255,255,.10);
+      color: var(--text-muted);
+      padding: 12px 10px;
+      font-weight: 750;
+      letter-spacing: .7px;
+      font-size: .72rem;
+      text-transform: uppercase;
+      cursor: pointer;
+      transition: transform var(--trans), background var(--trans), border-color var(--trans), color var(--trans);
+      backdrop-filter: blur(var(--blur));
+      -webkit-backdrop-filter: blur(var(--blur));
+    }
+
+    body:not(.devil-twin) .tab-btn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(76,195,255,.45);
+      color: var(--text);
+      background: rgba(76,195,255,.10);
+    }
+
+    body:not(.devil-twin) .tab-btn.active{
+      border-color: rgba(76,195,255,.70);
+      background: linear-gradient(135deg, rgba(76,195,255,.18), rgba(124,92,255,.10));
+      color: var(--text);
+      box-shadow: 0 0 0 2px rgba(76,195,255,.10) inset;
+    }
+
+    body:not(.devil-twin) .content{
+      max-width: 900px;
+      margin: 0 auto;
+      padding: 0 16px 32px;
+    }
+
+    body:not(.devil-twin) .tab-panel{ display:none; }
+    body:not(.devil-twin) .tab-panel.active{ display:block; }
+
+    /* Cards & info boxes */
+    body:not(.devil-twin) .card{ margin-bottom: 16px; border-radius: var(--radius) !important; }
+
+    body:not(.devil-twin) .card-header{
+      padding: 12px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.06);
+      display:flex;
+      justify-content: space-between;
+      align-items:center;
+      gap: 10px;
+    }
+
+    body:not(.devil-twin) .card-header h3{
+      font-size: .8rem;
+      font-weight: 900;
+      letter-spacing: .6px;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin: 0;
+    }
+
+    body:not(.devil-twin) .card-body{ padding: 14px; }
+
+    body:not(.devil-twin) .card-footer{
+      padding: 12px 14px;
+      border-top: 1px solid rgba(255,255,255,.10);
+      background: rgba(255,255,255,.05);
+    }
+
+    body:not(.devil-twin) .info-box{
+      margin-bottom: 12px;
+      padding: 12px 14px;
+      border-left: 3px solid rgba(76,195,255,.55);
+      background: rgba(255,255,255,.05);
+      border-radius: var(--radius) !important;
+      color: var(--text-muted);
+    }
+
+    body:not(.devil-twin) .info-box.info-warn{
+      border-left-color: rgba(255,200,0,.65);
+      background: rgba(255,200,0,.06);
+      color: rgba(255,225,140,.95);
+    }
+
+    body:not(.devil-twin) .info-label{
+      display:block;
+      font-weight: 950;
+      font-size: .7rem;
+      letter-spacing: 1.2px;
+      text-transform: uppercase;
+      margin-bottom: 6px;
+      color: var(--text);
+    }
+
+    body:not(.devil-twin) .info-box.info-warn .info-label{
+      color: #FFE39A;
+    }
+
+    /* Error banner */
+    body:not(.devil-twin) .error-banner{
+      background: var(--danger-bg);
+      color: var(--danger);
+      border: 1px solid rgba(255,77,109,.65);
+      border-radius: var(--radius);
+      padding: 10px 12px;
+      font-weight: 850;
+      display:none;
+      margin-bottom: 16px;
+    }
+
+    /* Badges */
+    body:not(.devil-twin) .badge{
+      padding: 3px 10px;
+      border-radius: 999px !important;
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.18);
+      color: var(--text-muted);
+      font-weight: 900;
+      font-size: .72rem;
+    }
+
+    /* Tables */
+    body:not(.devil-twin) .table-wrap{ overflow-x: auto; }
+    body:not(.devil-twin) table{ width:100%; border-collapse: collapse; text-align:left; }
+    body:not(.devil-twin) th{
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .9px;
+      color: var(--text-muted);
+      font-weight: 900;
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.10);
+    }
+    body:not(.devil-twin) td{
+      padding: 10px 14px;
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      color: var(--text-muted);
+      font-weight: 600;
+      font-size: .85rem;
+    }
+    body:not(.devil-twin) tr:last-child td{ border-bottom: none; }
+    body:not(.devil-twin) tbody tr:hover{ background: rgba(255,255,255,.07); cursor: pointer; }
+    body:not(.devil-twin) tr.selected{ background: rgba(76,195,255,.12) !important; }
+    body:not(.devil-twin) .table-empty-msg{
+      color: var(--text-muted);
+      text-align:center;
+      font-style: italic;
+      padding: 20px;
+      border-bottom: none;
+    }
+
+    /* Buttons */
+    body:not(.devil-twin) button{
+      background: rgba(76,195,255,.22);
+      color: var(--text);
+      border: 1px solid rgba(76,195,255,.55);
+      padding: 10px 16px;
+      font-weight: 900;
+      letter-spacing: .3px;
+      cursor: pointer;
+      transition: transform var(--trans), background var(--trans), border-color var(--trans), opacity var(--trans);
+      box-shadow: 0 8px 20px rgba(0,0,0,.15);
+    }
+
+    body:not(.devil-twin) button:hover{
+      transform: translateY(-1px);
+      background: rgba(76,195,255,.28);
+      border-color: rgba(76,195,255,.80);
+      opacity: 1;
+    }
+
+    body:not(.devil-twin) button:disabled{
+      opacity: .45;
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    body:not(.devil-twin) .btn-secondary{
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.18);
+      box-shadow: none;
+    }
+
+    body:not(.devil-twin) .btn-secondary:hover{
+      background: rgba(255,255,255,.10);
+      border-color: rgba(76,195,255,.45);
+    }
+
+    body:not(.devil-twin) .btn-primary{
+      background: linear-gradient(135deg, rgba(76,195,255,.95), rgba(124,92,255,.85));
+      border-color: rgba(255,255,255,.18);
+      color: #04101E;
+      box-shadow: 0 16px 40px rgba(76,195,255,.15);
+    }
+
+    body:not(.devil-twin) .btn-primary:hover{
+      background: linear-gradient(135deg, rgba(76,195,255,1), rgba(124,92,255,.95));
+    }
+
+    body:not(.devil-twin) .full-width{ width: 100%; padding: 13px 16px; }
+
+    body:not(.devil-twin) input[type="text"],
+    body:not(.devil-twin) input[type="password"],
+    body:not(.devil-twin) input[type="number"],
+    body:not(.devil-twin) select{
+      width: 100%;
+      padding: 10px 12px;
+      border: 1px solid rgba(255,255,255,.16);
+      background: rgba(255,255,255,.06);
+      color: var(--text);
+      border-radius: var(--radius-sm) !important;
+      outline: none;
+      font-weight: 700;
+      transition: border-color var(--trans), box-shadow var(--trans), background var(--trans);
+    }
+
+    body:not(.devil-twin) input:focus,
+    body:not(.devil-twin) select:focus{
+      border-color: rgba(76,195,255,.70);
+      box-shadow: 0 0 0 3px rgba(76,195,255,.18);
+      background: rgba(255,255,255,.10);
+    }
+
+    body:not(.devil-twin) select:disabled{ opacity: .5; }
+
+    /* Attack type buttons */
+    body:not(.devil-twin) .attack-type-group{ display:flex; gap:8px; flex-wrap:wrap; }
+
+    body:not(.devil-twin) .type-btn{
+      flex: 1;
+      min-width: 120px;
+      background: rgba(255,255,255,.06);
+      color: var(--text-muted);
+      border: 1px solid rgba(255,255,255,.14);
+      padding: 10px 10px;
+      font-weight: 950;
+      border-radius: var(--radius-sm) !important;
+      transition: transform var(--trans), background var(--trans), border-color var(--trans), color var(--trans);
+      text-transform: uppercase;
+      letter-spacing: .6px;
+      font-size: .72rem;
+    }
+
+    body:not(.devil-twin) .type-btn:hover{
+      transform: translateY(-1px);
+      border-color: rgba(76,195,255,.65);
+      background: rgba(76,195,255,.10);
+      color: var(--text);
+    }
+
+    body:not(.devil-twin) .type-btn.active{
+      border-color: rgba(76,195,255,.85);
+      background: rgba(76,195,255,.16);
+      color: var(--text);
+      box-shadow: 0 0 0 2px rgba(76,195,255,.10) inset;
+    }
+
+    /* Checkbox alignment */
+    body:not(.devil-twin) input[type="checkbox"]{
+      accent-color: var(--accent);
+      width: 16px;
+      height: 16px;
+    }
+
+    body:not(.devil-twin) .form-label{
+      display:block;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      font-weight: 950;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    body:not(.devil-twin) .form-hint{
+      color: var(--text-muted);
+      font-size: .8rem;
+      margin-top: 10px;
+      font-weight: 650;
+    }
+
+    /* Chips */
+    body:not(.devil-twin) .selected-ap-chips{ display:flex; flex-wrap:wrap; gap: 8px; }
+    body:not(.devil-twin) .ap-chip{
+      background: rgba(76,195,255,.12);
+      color: rgba(165,235,255,.95);
+      border: 1px solid rgba(76,195,255,.35);
+      padding: 6px 10px;
+      border-radius: 999px !important;
+      font-weight: 900;
+      font-size: .78rem;
+      display:flex;
+      align-items:center;
+      gap: 8px;
+    }
+    body:not(.devil-twin) .chip-x{ cursor:pointer; opacity:.7; transition: opacity var(--trans), transform var(--trans); }
+    body:not(.devil-twin) .chip-x:hover{ opacity:1; transform: translateY(-1px); }
+
+    /* Running/timer visuals */
+    body:not(.devil-twin) .running-card{ text-align:center; padding: 40px 20px; }
+    body:not(.devil-twin) .circular-timer-container{ position:relative; width:110px; height:110px; margin: 0 auto 16px; }
+    body:not(.devil-twin) .circle-bg{ fill:none; stroke: rgba(255,255,255,.16); stroke-width:2.5; }
+    body:not(.devil-twin) .circle{ fill:none; stroke: var(--accent); stroke-width:2.5; stroke-linecap: round; transition: stroke-dasharray 1s linear; }
+    body:not(.devil-twin) .timer-text{
+      position:absolute; top:50%; left:50%;
+      transform: translate(-50%,-50%);
+      font-weight: 950;
+      font-size: 1.25rem;
+      color: var(--text);
+    }
+    body:not(.devil-twin) .running-label{
+      font-weight: 950;
+      letter-spacing: 2px;
+      font-size: .72rem;
+      color: rgba(234,242,255,.78);
+      margin-bottom: 8px;
+      text-transform: uppercase;
+    }
+    body:not(.devil-twin) .running-attack-info{ margin-top: 12px; font-weight: 900; }
+
+    body:not(.devil-twin) .no-timeout-hint{
+      margin-top: 16px;
+      font-size: .82rem;
+      color: var(--warn-text);
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      border-radius: var(--radius-sm);
+      padding: 10px 12px;
+      display:inline-block;
+      font-weight: 800;
+    }
+
+    /* Results */
+    body:not(.devil-twin) .result-status{
+      display:inline-block;
+      padding: 4px 12px;
+      border-radius: 999px !important;
+      font-weight: 950;
+      font-size: .78rem;
+      letter-spacing: .3px;
+      border: 1px solid rgba(255,255,255,.16);
+      margin-bottom: 10px;
+    }
+
+    body:not(.devil-twin) .status-finished{ background: rgba(45,255,183,.16); color: #D8FFF3; border-color: rgba(45,255,183,.45); }
+    body:not(.devil-twin) .status-timeout{ background: rgba(255,213,106,.14); color: #FFE6A9; border-color: rgba(255,213,106,.42); }
+
+    body:not(.devil-twin) .result-type-label{ font-size: .85rem; color: var(--text-muted); margin-bottom: 12px; font-weight: 850; }
+
+    body:not(.devil-twin) .result-block h4{ font-size: .72rem; text-transform: uppercase; letter-spacing: .9px; color: var(--text-muted); }
+
+    /* Dialog */
+    body:not(.devil-twin) #dialog-overlay{
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,.55);
+      display:flex; align-items:center; justify-content:center;
+      z-index: 9999; padding: 16px;
+    }
+
+    body:not(.devil-twin) .hidden{ display:none !important; }
+
+    body:not(.devil-twin) .dialog-box{
+      padding: 22px;
+      max-width: 380px; width: 100%;
+      background: rgba(255,255,255,.08);
+      border: 1px solid rgba(255,255,255,.16);
+    }
+
+    body:not(.devil-twin) .dialog-box p{ color: var(--text-muted); font-weight: 650; }
+
+    /* Disclaimer (main overlay) */
+    #disclaimer-overlay{
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      overflow-y: auto;
+      padding: 18px 14px;
+      background:
+        radial-gradient(900px 520px at 20% 0%, rgba(76,195,255,.22), transparent 55%),
+        radial-gradient(700px 520px at 90% 10%, rgba(124,92,255,.22), transparent 50%),
+        rgba(0,0,0,.35);
+    }
+
+    body:not(.devil-twin) .disclaimer-page{ max-width: 820px; margin: 0 auto; padding: 8px 0 70px; }
+
+    body:not(.devil-twin) .disclaimer-logo{
+      padding: 22px 18px 14px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.14);
+      background: rgba(0,0,0,.18);
+      display:flex;
+      align-items: baseline;
+      gap: 12px;
+      margin-bottom: 18px;
+    }
+
+    body:not(.devil-twin) .disclaimer-logo-name{
+      font-weight: 950;
+      font-size: 1.2rem;
+      letter-spacing: .2px;
+    }
+
+    body:not(.devil-twin) .disclaimer-logo-ver{
+      font-size: .78rem;
+      color: var(--text-muted);
+      font-weight: 800;
+    }
+
+    body:not(.devil-twin) .disclaimer-content{ padding: 0 6px; }
+
+    body:not(.devil-twin) .disclaimer-warn-tag{
+      display:inline-block;
+      font-size: .74rem;
+      font-weight: 950;
+      letter-spacing: 1.2px;
+      color: var(--warn-text);
+      background: var(--warn-bg);
+      border: 1px solid var(--warn-border);
+      padding: 6px 12px;
+      border-radius: 999px !important;
+      margin-bottom: 14px;
+    }
+
+    body:not(.devil-twin) .disclaimer-title{
+      font-size: 2rem;
+      line-height: 1.15;
+      font-weight: 950;
+      margin-bottom: 10px;
+    }
+
+    body:not(.devil-twin) .disclaimer-intro{
+      color: var(--text-muted);
+      margin-bottom: 18px;
+      font-size: .95rem;
+      max-width: 680px;
+      font-weight: 650;
+    }
+
+    body:not(.devil-twin) .disclaimer-section{
+      margin-bottom: 18px;
+      padding-bottom: 18px;
+      border-bottom: 1px solid rgba(255,255,255,.12);
+    }
+
+    body:not(.devil-twin) .disclaimer-section:last-of-type{ border-bottom: none; }
+
+    body:not(.devil-twin) .disclaimer-section h2{
+      font-size: .8rem;
+      font-weight: 950;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: rgba(234,242,255,.78);
+      margin-bottom: 10px;
+    }
+
+    body:not(.devil-twin) .disclaimer-section p,
+    body:not(.devil-twin) .disclaimer-section ul{
+      color: rgba(234,242,255,.78);
+    }
+
+    body:not(.devil-twin) .disclaimer-section ul{ padding-left: 18px; font-weight: 650; }
+
+    body:not(.devil-twin) .disclaimer-agree-bar{
+      margin-top: 18px;
+      padding: 18px;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.14);
+    }
+
+    body:not(.devil-twin) .disclaimer-check-label{
+      display:flex; align-items:flex-start; gap: 12px;
+      font-weight: 650;
+      cursor: pointer;
+      color: rgba(234,242,255,.80);
+      line-height: 1.5;
+    }
+
+    body:not(.devil-twin) .disclaimer-check-label input[type="checkbox"]{
+      width: 16px; height: 16px;
+      margin-top: 2px;
+      accent-color: var(--accent);
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+
+    body:not(.devil-twin) #disclaimer-btn{
+      width: 100%;
+      margin-top: 10px;
+      padding: 13px 16px;
+      border-radius: 999px !important;
+      background: linear-gradient(135deg, rgba(76,195,255,.95), rgba(124,92,255,.85));
+      border: 1px solid rgba(255,255,255,.18);
+      color: #04101E;
+      font-weight: 950;
+      letter-spacing: .6px;
+      transition: transform var(--trans), opacity var(--trans), filter var(--trans);
+      box-shadow: 0 16px 40px rgba(76,195,255,.14);
+    }
+
+    body:not(.devil-twin) #disclaimer-btn:hover{ transform: translateY(-1px); }
+    body:not(.devil-twin) #disclaimer-btn:disabled{ opacity: .45; cursor: not-allowed; transform: none; }
+
+    /* Code */
+    body:not(.devil-twin) code, body:not(.devil-twin) pre{
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace;
+      font-size: .82rem;
+      background: rgba(255,255,255,.06);
+      border: 1px solid rgba(255,255,255,.14);
+      color: var(--text);
+      border-radius: var(--radius-sm) !important;
+      padding: 2px 6px;
+    }
+
+    body:not(.devil-twin) pre{
+      padding: 12px;
+      overflow-x:auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+    }
+
+    /* Detector state */
+    body:not(.devil-twin) .det-status{
+      padding: 3px 10px;
+      border-radius: 999px !important;
+      background: rgba(255,255,255,.14);
+      border: 1px solid rgba(255,255,255,.16);
+      color: var(--text-muted);
+      font-weight: 950;
+      font-size: .72rem;
+      letter-spacing: .4px;
+    }
+
+    body:not(.devil-twin) .det-status.running{
+      background: rgba(76,195,255,.16);
+      border-color: rgba(76,195,255,.55);
+      color: rgba(165,235,255,.98);
+    }
+
+    body:not(.devil-twin) .det-waiting{ color: var(--text-muted); font-weight: 700; }
+
+    /* Credits / tables */
+    body:not(.devil-twin) .credit-row{ padding: 16px; border-bottom: 1px solid rgba(255,255,255,.10); }
+    body:not(.devil-twin) .credit-role{ color: var(--accent); font-weight: 950; letter-spacing: 1px; text-transform: uppercase; font-size: .68rem; }
+    body:not(.devil-twin) .credit-desc{ color: var(--text-muted); font-weight: 650; }
+
+    body:not(.devil-twin) .info-table td{ padding: 10px 14px; border-bottom: 1px solid rgba(255,255,255,.08); color: var(--text-muted); }
+    body:not(.devil-twin) .info-table tr:last-child td{ border-bottom: none; }
+    body:not(.devil-twin) .info-table td:first-child{
+      width: 140px;
+      font-size: .72rem;
+      text-transform: uppercase;
+      letter-spacing: .9px;
+      color: var(--text-muted);
+      font-weight: 950;
+    }
+
+    /* Small screens */
+    @media (max-width: 600px){
+      body:not(.devil-twin) .tab-nav{ gap: 8px; padding: 8px; }
+      body:not(.devil-twin) .tab-btn{ padding: 10px 6px; }
+      body:not(.devil-twin) .type-btn{ min-width: calc(50% - 6px); }
+      body:not(.devil-twin) .disclaimer-title{ font-size: 1.5rem; }
+    }
+  </style>
 </head>
 <body>
 
-
-<div id="disclaimer-overlay">
-  <div class="disclaimer-page">
-
-    <div class="disclaimer-header">
-      <img src="/icons/skull.png" class="disclaimer-header-icon" alt="">
-      <div>
-        <span class="disclaimer-logo-name">Hydra-ESP</span>
-        <span class="disclaimer-logo-ver">v1.1.3 — Authorised Use Only</span>
+  <!-- DISCLAIMER OVERLAY (shown only once, full-page) -->
+  <div id="disclaimer-overlay">
+    <div class="disclaimer-page">
+      <div class="disclaimer-logo">
+        <span class="disclaimer-logo-name">GumilangKIT</span>
+        <span class="disclaimer-logo-ver">v1.1.3</span>
       </div>
-    </div>
+      <div class="disclaimer-content">
+        <div class="disclaimer-warn-tag">⚠ LEGAL NOTICE &amp; DISCLAIMER</div>
+        <h1 class="disclaimer-title">Authorised Use Only</h1>
+        <p class="disclaimer-intro">This firmware is an educational security research tool for the ESP32 microcontroller. Before using any feature, read and understand the following.</p>
 
-    <div class="disclaimer-content">
-    <img src="/icons/warning.png" class="disclaimer-warn-tag" alt="">
-      <div class="disclaimer-warn-tag">Legal Notice &amp; Disclaimer</div>
-
-      <h1 class="disclaimer-title">Authorised Use Only</h1>
-      <p class="disclaimer-intro">
-        This firmware is an educational security research tool for the ESP32 microcontroller.
-        Read and understand the following before using any feature.
-      </p>
-
-      <div class="disclaimer-section">
-        <h2>You Must Have Permission</h2>
-        <p>You may only use this tool on networks and devices you own or have received
-           <strong>explicit, written authorisation</strong> to audit. Testing networks without
-           permission is illegal in most countries, including under the Computer Fraud and Abuse
-           Act (CFAA, US), the Computer Misuse Act (UK), the IT Act (India), and equivalent
-           legislation worldwide.</p>
-      </div>
-
-      <div class="disclaimer-section">
-        <h2>What This Tool Can Do</h2>
-        <p>Hydra-ESP can perform deauthentication attacks, handshake capture, PMKID capture,
-           Evil Twin attacks, beacon spam, BLE advertising, and rogue AP cloning. All of these
-           techniques can disrupt real wireless networks and constitute criminal offences if used
-           without authorisation.</p>
-      </div>
-
-      <div class="disclaimer-section">
-        <h2>Responsible Use</h2>
-        <ul>
-          <li>Only test in isolated lab environments or on your own equipment.</li>
-          <li>Never target public, commercial, or residential networks.</li>
-          <li>Do not use captures (PCAP, HCCAPX, PMKID) to access accounts you do not own.</li>
-          <li>Store captured data securely and delete it when no longer needed.</li>
-          <li>Be aware that 802.11 deauthentication affects all nearby devices on the channel.</li>
-        </ul>
-      </div>
-
-      <div class="disclaimer-section">
-        <h2>Liability</h2>
-        <p>The authors and contributors of HydraESP accept <strong>no liability</strong>
-           for misuse. You, the operator, are solely responsible for any harm, legal consequence,
-           or damage arising from your use of this firmware.</p>
-      </div>
-
-      <div class="disclaimer-section">
-        <h2>Applicable Laws (Examples)</h2>
-        <p>Unauthorised network testing may violate: the Computer Fraud &amp; Abuse Act, the
-           Wiretap Act, ECPA (US) · Computer Misuse Act (UK) · IT Act 2000 (Bangladesh / India)
-           · GDPR and local data-protection laws · Telecommunications regulations in your
-           jurisdiction. <em>This list is not exhaustive.</em></p>
-      </div>
-
-      <div class="disclaimer-agree-bar">
-        <label class="disclaimer-check-label">
-          <input type="checkbox" id="disclaimer-check">
-          <span>I have read and understood the above. I confirm I have explicit written authorisation
-                to test the target network(s). I accept full responsibility for my actions.</span>
-        </label>
-        <button id="disclaimer-btn" onclick="dismissDisclaimer()" disabled>Continue →</button>
-      </div>
-    </div>
-  </div>
-</div>
-
-
-<div id="dialog-overlay" class="hidden">
-  <div class="dialog-box">
-    <p id="dialog-msg"></p>
-    <button onclick="closeDialog()">Got it</button>
-  </div>
-</div>
-
-
-<header class="app-bar">
-  <div class="app-bar-inner">
-    <div class="brand">
-      <img src="/icons/logo.png" class="brand-icon" alt="">
-      <div>
-        <span class="brand-name">Hydra-ESP</span>
-      </div>
-    </div>
-    <button class="icon-btn theme-toggle" onclick="toggleTheme()" aria-label="Toggle light / dark mode">
-      <img src="/icons/light_mode.png" class="icon-img" alt="Theme toggle">
-    </button>
-  </div>
-</header>
-
-
-<nav class="bottom-nav">
-  <button class="nav-item active" data-tab="scan" onclick="switchTab('scan')">
-    <div class="nav-indicator">
-      <img src="/icons/analyze.png" class="nav-icon" alt="">
-    </div>
-    <span class="nav-label">Scan</span>
-  </button>
-  <button class="nav-item" data-tab="attack" onclick="switchTab('attack')">
-    <div class="nav-indicator">
-      <img src="/icons/skull.png" class="nav-icon" alt="">
-    </div>
-    <span class="nav-label">Attack</span>
-  </button>
-  <button class="nav-item" data-tab="settings" onclick="switchTab('settings')">
-    <div class="nav-indicator">
-      <img src="/icons/settings.png" class="nav-icon" alt="">
-    </div>
-    <span class="nav-label">Settings</span>
-  </button>
-  <button class="nav-item" data-tab="about" onclick="switchTab('about')">
-    <div class="nav-indicator">
-      <img src="/icons/flow.png" class="nav-icon" alt="">
-    </div>
-    <span class="nav-label">About</span>
-  </button>
-</nav>
-
-
-<main class="content">
-  <div id="errors" class="error-banner"></div>
-
-    <!-- Scan -->
-  <section id="tab-scan" class="tab-panel active">
-
-    <div class="info-box info-warn">
-      <div class="info-label">
-        <img src="/icons/tips.png" class="info-label-icon" alt="">
-        Authorised Use Only
-      </div>
-      Only test networks you own or have explicit written permission to audit.
-      Unauthorised use is a criminal offence in most jurisdictions.
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <h3>Nearby Wi-Fi Networks</h3>
-        <span id="selected-count-badge" class="badge">0 selected</span>
-      </div>
-      <div class="card-body" style="padding:0;">
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>SSID</th>
-                <th>BSSID</th>
-                <th>Signal</th>
-              </tr>
-            </thead>
-            <tbody id="ap-list">
-              <tr><td colspan="3" class="table-empty-msg">Scanning…</td></tr>
-            </tbody>
-          </table>
+        <div class="disclaimer-section">
+          <h2>You Must Have Permission</h2>
+          <p>You may only use this tool on networks and devices that you own or have received <strong>explicit, written authorisation</strong> to audit. Testing networks without permission is illegal in most countries, including under the Computer Fraud and Abuse Act (CFAA, US), the Computer Misuse Act (UK), the IT Act (India), and equivalent legislation worldwide.</p>
         </div>
-        <div class="card-footer">
-          <button onclick="refreshAps()" class="btn-secondary">
-            <img src="/icons/refresh.png" class="btn-icon" alt="">
-            Refresh Scan
-          </button>
+
+        <div class="disclaimer-section">
+          <h2>What This Tool Can Do</h2>
+          <p>ProjectHydraOS can perform deauthentication attacks, handshake capture, PMKID capture, Evil Twin attacks, beacon spam, BLE advertising, and rogue AP cloning. All of these techniques can disrupt real wireless networks and constitute criminal offences if used without authorisation.</p>
+        </div>
+
+        <div class="disclaimer-section">
+          <h2>Responsible Use</h2>
+          <ul>
+            <li>Only test in isolated lab environments or on your own equipment.</li>
+            <li>Never target public, commercial, or residential networks.</li>
+            <li>Do not use captures (PCAP, HCCAPX, PMKID) to access accounts or services you do not own.</li>
+            <li>Store captured data securely and delete it when no longer needed.</li>
+            <li>Be aware that 802.11 deauthentication affects all nearby devices on the channel.</li>
+          </ul>
+        </div>
+
+        <div class="disclaimer-section">
+          <h2>Liability</h2>
+          <p>The authors and contributors of ProjectHydraOS accept <strong>no liability</strong> for misuse. You, the operator, are solely responsible for any harm, legal consequence, or damage arising from your use of this firmware.</p>
+        </div>
+
+        <div class="disclaimer-section">
+          <h2>Applicable Laws (Examples)</h2>
+          <p>Unauthorised network testing may violate: the Computer Fraud &amp; Abuse Act, the Wiretap Act, ECPA (US) · Computer Misuse Act (UK) · IT Act 2000 (Bangladesh/India) · GDPR and local data-protection laws · Telecommunications regulations in your jurisdiction. <em>This list is not exhaustive.</em></p>
+        </div>
+
+        <div class="disclaimer-agree-bar">
+          <label class="disclaimer-check-label">
+            <input type="checkbox" id="disclaimer-check">
+            <span>I have read and understood the above. I confirm I have explicit written authorisation to test the target network(s). I accept full responsibility for my actions.</span>
+          </label>
+          <button id="disclaimer-btn" onclick="dismissDisclaimer()" disabled>CONTINUE</button>
         </div>
       </div>
     </div>
+  </div>
 
-
-    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px; margin:0 4px;">
-
-      <div class="info-box" style="margin:0; border-radius:var(--radius-lg);">
-        <div class="info-label">Twin Deauth</div>
-        Clones the target BSSID on the same channel. Bypasses MFP on modern devices.
-      </div>
-
-      <div class="info-box" style="margin:0; border-radius:var(--radius-lg);">
-        <div class="info-label">Packet Deauth</div>
-        Sends raw 802.11 deauth frames. Supports multi-target. Devices with 802.11w may resist.
-      </div>
-
-      <div class="info-box" style="margin:0; border-radius:var(--radius-lg);">
-        <div class="info-label">Handshake</div>
-        Captures WPA/WPA2 4-way handshake. Outputs <code>.pcap</code> &amp; <code>.hccapx</code>.
-      </div>
-
-      <div class="info-box" style="margin:0; border-radius:var(--radius-lg);">
-        <div class="info-label">PMKID</div>
-        Clientless — captures from first EAPOL-Key frame. Works on most WPA2 APs.
-      </div>
-
-      <div class="info-box" style="margin:0; border-radius:var(--radius-lg);">
-        <div class="info-label">Beacon Spam</div>
-        Floods airspace with fake beacons, polluting Wi-Fi scan lists on all nearby devices.
-      </div>
-
-      <div class="info-box" style="margin:0; border-radius:var(--radius-lg);">
-        <div class="info-label">Evil Twin</div>
-        Clones target AP and execute deauth. Fake Captive portal harvests the network password.
-      </div>
-
-      <div class="info-box" style="margin:0; grid-column:1/-1; border-radius:var(--radius-lg);">
-        <div class="info-label">Ghost Mode (Probe Spam)</div>
-        Exploits persistent device probing for saved networks. Clones those SSIDs so devices
-        attempt to associate with the ESP32 instead of the original AP.
-      </div>
-
+  <!-- Simple dialog -->
+  <div id="dialog-overlay" class="hidden">
+    <div class="dialog-box">
+      <p id="dialog-msg"></p>
+      <button onclick="closeDialog()">OK</button>
     </div>
+  </div>
 
-  </section>
+  <div class="app-header">
+    <div class="header-inner">
+      <div class="brand">
+        <span class="brand-name">GumilangKIT</span>
+        <span class="brand-version">v1.1.3 — Sameer Al Sahab</span>
+      </div>
+    </div>
+  </div>
 
-  <section id="tab-attack" class="tab-panel">
+  <nav class="tab-nav">
+    <button class="tab-btn active" data-tab="scan"     onclick="switchTab('scan')">SCAN</button>
+    <button class="tab-btn"        data-tab="attack"   onclick="switchTab('attack')">ATTACK</button>
+    <button class="tab-btn"        data-tab="detector" onclick="switchTab('detector')">DETECTOR</button>
+    <button class="tab-btn"        data-tab="settings" onclick="switchTab('settings')">SETTINGS</button>
+    <button class="tab-btn"        data-tab="about"    onclick="switchTab('about')">ABOUT</button>
+  </nav>
 
+  <div class="content">
+    <div id="errors" class="error-banner"></div>
 
-    <div id="running-section" style="display:none;">
+    <!-- TAB: SCAN -->
+    <div id="tab-scan" class="tab-panel active">
+      <div class="info-box info-warn">
+        <strong>Authorised use only.</strong> Only test networks you own or have written permission to audit. Unauthorised use is a criminal offence in most jurisdictions.
+      </div>
       <div class="card">
+        <div class="card-header">
+          <h3>Nearby Wi-Fi Networks</h3>
+          <span id="selected-count-badge" class="badge">0 selected</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>SSID</th><th>BSSID</th><th>Signal</th></tr></thead>
+              <tbody id="ap-list">
+                <tr><td colspan="3" class="table-empty-msg">Scanning…</td></tr>
+              </tbody>
+            </table>
+          </div>
+          <div class="card-footer">
+            <button onclick="refreshAps()" class="btn-secondary">REFRESH</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="info-box">
+        <div class="info-label">Twin Deauth</div>
+        Clones the target AP's BSSID and SSID on the same channel. Clients receive conflicting same network and disconnect. Very effective on every devices including modern phones with MFP support.
+      </div>
+      <div class="info-box">
+        <div class="info-label">Packet Deauth</div>
+        Sends raw 802.11 deauth frames. Supports multiple targets simultaneously. Devices with 802.11w (MFP) may resist.
+      </div>
+      <div class="info-box">
+        <div class="info-label">Handshake Capture</div>
+        Captures the WPA/WPA2 4-way handshake. Outputs <code>.pcap</code> and <code>.hccapx</code> for offline auditing with Hashcat or aircrack-ng or wordlist files.
+      </div>
+      <div class="info-box">
+        <div class="info-label">PMKID Eapol frames</div>
+        Captures the PMKID from the first EAPOL-Key frame — no connected client required. Works on most modern WPA2 APs.
+      </div>
+      <div class="info-box">
+        <div class="info-label">Beacon Spam</div>
+        Floods the air with fake beacon frames carrying random SSIDs, polluting Wi-Fi scan lists on nearby devices.
+      </div>
+      <div class="info-box">
+        <div class="info-label">Evil Twin</div>
+        Deploys an open clone of the target AP and starts deauth attack to the original. Victims connecting to the clone are redirected to a captive portal requesting the network password. Jamming continues until the correct password is submitted.
+      </div>
+      <div class="info-box">
+        <div class="info-label">Probe Known Networks Spam</div>
+        Exploits persistent device probing for saved networks. Clones those network names so devices attempt to connect to the ESP32 instead.
+      </div>
+    </div>
+
+    <!-- TAB: ATTACK -->
+    <div id="tab-attack" class="tab-panel">
+      <div id="running-section" style="display:none;">
         <div class="running-card">
-
-
+          <!-- Beacon spam: circular timer -->
           <div id="beacon-timer-wrap" style="display:none;">
             <div class="circular-timer-container">
               <svg viewBox="0 0 36 36" class="circular-chart">
-                <path class="circle-bg"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831
-                         a 15.9155 15.9155 0 0 1 0 -31.831"/>
-                <path class="circle" id="timer-path" stroke-dasharray="0, 100"
-                      d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831
-                         a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
+                <path class="circle" id="timer-path" stroke-dasharray="0, 100" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"/>
               </svg>
               <div class="timer-text" id="timer-elapsed">0s</div>
             </div>
             <div class="running-of" id="timer-of"></div>
           </div>
-
-
+          <!-- Other attacks: simple status -->
           <div id="simple-running-wrap" style="display:none;">
-            <div class="simple-running-icon">
-              <img src="/icons/rocket.png" alt="Running">
-            </div>
+            <div class="simple-running-icon">▶</div>
           </div>
-
-          <div class="running-label">Attack In Progress</div>
+          <div class="running-label">ATTACK IN PROGRESS</div>
           <div class="running-attack-info" id="running-attack-info"></div>
-          <div id="no-timeout-hint" class="no-timeout-hint" style="display:none;">
-            No timeout set — power cycle the ESP32 to stop the attack.
-          </div>
-        </div>
-      </div>
-    </div>
-
-      <!-- BT Payload options -->
-    <div id="bt-payload-controls" style="display:none; margin-top:12px; text-align:center;">
-      <div class="card">
-        <div class="card-body">
-          <div id="bt-status-container">
-            <span id="bt-connection-info">Checking Bluetooth status…</span>
-          </div>
-
-          <div style="display:flex; gap:8px; justify-content:center; flex-wrap:wrap; margin-bottom:14px;">
-            <button onclick="setBtPayloadAndRun(1)" class="bt-payload-btn">Write to Notepad</button>
-            <button onclick="setBtPayloadAndRun(2)" class="bt-payload-btn">Play Rick Roll (YouTube)</button>
-            <button onclick="setBtPayloadAndRun(3)" class="bt-payload-btn">Set Warning Wallpaper *</button>
-            <button onclick="setBtPayloadAndRun(4)" class="bt-payload-btn">Grab Wi-Fi Passwords **</button>
-            <button onclick="setBtPayloadAndRun(5)" class="bt-payload-btn">Hydra God Mode</button>
-          </div>
-
-          <div class="info-box info-warn" style="text-align:left; margin:0 0 12px;">
-            <div class="info-label">Notes</div>
-            * Wallpaper may update fully only after a restart. Device must be online to download.<br>
-            ** Requires a remote server or request-bin to receive the password list.<br>
-            Most payloads target Windows. Use nRF Connect app for Android pairing.
-          </div>
-
-          <div style="margin-top:14px; padding-top:12px; border-top:1px solid var(--md-outline-var);">
-            <label style="display:flex; align-items:center; gap:10px; margin-bottom:10px; cursor:pointer;">
-              <input type="checkbox" id="use-custom-url" onchange="toggleCustomUrl()"
-                     style="width:18px; height:18px; accent-color:var(--md-primary);">
-              <span style="font-size:0.85rem; color:var(--md-on-surface);">
-                Send to remote server (RequestBin, etc.)
-              </span>
-            </label>
-            <div id="custom-url-row" style="display:none;">
-              <input type="text" id="custom-url" placeholder="https://your.requestbin.com/…"
-                     style="margin-bottom:8px;">
-              <button class="btn-secondary" onclick="saveCustomUrl()">Save URL</button>
-            </div>
-          </div>
-
-          <div style="margin-top:14px;">
-            <button onclick="runBtPayloadAgain()" class="btn-tonal">↺ Run Again</button>
-          </div>
-          <p style="font-size:0.72rem; color:var(--md-on-surface-var); margin-top:10px;">
-            Selecting a payload executes it immediately on the connected device and sets it for
-            future reconnects.
-          </p>
-        </div>
-      </div>
-    </div>
-
-    <!-- Result card -->
-    <div id="result-section" style="display:none;">
-      <div class="card">
-        <div class="card-header">
-          <h3>Attack Result</h3>
-          <img src="/icons/check.png"
-               style="width:20px; height:20px; filter:var(--icon-filter-active);" alt="">
-        </div>
-        <div class="card-body">
-          <span id="result-status" class="result-status"></span>
-          <div id="result-type" class="result-type-label"></div>
-          <div id="result-body"></div>
-          <div style="margin-top:20px;">
-            <button onclick="resetAttack()" class="btn-secondary">← New Attack</button>
-          </div>
-        </div>
-      </div>
-    </div>
-
-
-    <div id="attack-config-section">
-
-
-      <div class="card">
-        <div class="card-header">
-          <h3>Selected Targets</h3>
-          <span id="selected-count-badge-attack" class="badge">0 selected</span>
-        </div>
-        <div class="card-body">
-          <div id="selected-ap-chips" class="selected-ap-chips">
-            <span class="no-ap-hint">No AP selected — tap a row in the Scan tab</span>
-          </div>
+          <div id="no-timeout-hint" class="no-timeout-hint" style="display:none;">No timeout set — power cycle the ESP32 to stop the attack.</div>
         </div>
       </div>
 
-
-      <div class="card">
-        <div class="card-header">
-          <h3>Configure Attack</h3>
+      <div id="bt-payload-controls" style="display:none; margin-top:20px; text-align:center;">
+        <div id="bt-status-container" style="margin-bottom: 15px; padding: 10px; background: var(--surface-hover); border-radius: var(--radius);">
+          <span id="bt-connection-info" style="font-family: 'IBM Plex Mono', monospace; font-size: 0.8rem;">
+            Checking Bluetooth status...
+          </span>
         </div>
-        <div class="card-body">
 
-          <div class="form-row">
-            <label class="form-label">Attack Type</label>
-            <div class="attack-type-group">
-              <button type="button" class="type-btn" onclick="selectAttackType(3,this)">Deauth</button>
-              <button type="button" class="type-btn" onclick="selectAttackType(1,this)">Handshake</button>
-              <button type="button" class="type-btn" onclick="selectAttackType(2,this)">PMKID</button>
-              <button type="button" class="type-btn" onclick="selectAttackType(4,this)">Beacon Spam</button>
-              <button type="button" class="type-btn" onclick="selectAttackType(5,this)">Ghost Mode</button>
-              <button type="button" class="type-btn" onclick="selectAttackType(6,this)">Devil Twin</button>
-              <button type="button" class="type-btn" onclick="selectAttackType(7,this)">BLE Spam</button>
-              <button type="button" class="type-btn" onclick="selectAttackType(8,this)">Super Clone</button>
-              <button type="button" class="type-btn" onclick="selectAttackType(9,this)">BT Payload</button>
-            </div>
-            <input type="hidden" id="attack_type" value="">
-          </div>
-
-          <div class="form-row" id="method-row">
-            <label class="form-label" for="attack_method">Attack Method</label>
-            <select id="attack_method" disabled onchange="enforceSelectionLimit()">
-              <option value="" selected disabled hidden>Select an attack type first</option>
-            </select>
-          </div>
-
-          <div id="beacon_config" style="display:none;" class="form-row">
-            <label class="form-label" for="beacon_count">Number of Fake Networks</label>
-            <input type="number" id="beacon_count" min="1" max="100" value="20"
-                   style="width:120px; min-width:120px;">
-          </div>
-
-          <div class="form-row" id="timeout-row">
-            <div class="timeout-row">
-              <div class="checkbox-row">
-                <input type="checkbox" id="timeout_enable" checked>
-                <label for="timeout_enable" class="timeout-label">Timeout (minutes)</label>
-              </div>
-              <input type="number" id="attack_timeout" min="1" max="255" value="1">
-            </div>
-            <p class="form-hint" id="no-timeout-note" style="display:none; margin-top:10px;">
-              <strong>Warning:</strong> Without a timeout, the ESP32 management AP will disconnect
-              during this attack. You must <strong>power cycle</strong> the device to stop it and
-              regain access.
-            </p>
-          </div>
-
-          <div style="margin-top:24px;">
-            <button type="button" onclick="runAttack()" class="btn-primary full-width">
-              <img src="/icons/rocket.png"
-                   style="width:18px; height:18px; filter:brightness(10);" alt="">
-              Launch Attack
-            </button>
-          </div>
-
+        <div style="display:flex; gap:12px; justify-content:center; flex-wrap:wrap; margin-bottom:12px;">
+          <button onclick="setBtPayloadAndRun(1)" class="btn-secondary bt-payload-btn">▶ Write to notepad</button>
+          <button onclick="setBtPayloadAndRun(2)" class="btn-secondary bt-payload-btn">▶ Play Rick Roll video in youtube</button>
+          <button onclick="setBtPayloadAndRun(3)" class="btn-secondary bt-payload-btn">▶ Set Warning (Hacked) Wallpaper on Desktop*</button>
+          <button onclick="setBtPayloadAndRun(4)" class="btn-secondary bt-payload-btn">▶ Grab Wi-Fi Passwords**</button>
+          <button onclick="setBtPayloadAndRun(5)" class="btn-secondary bt-payload-btn">▶ Hydra Mode</button>
         </div>
-      </div>
-    </div>
 
-  </section>
+        <p style="font-size:0.75rem; color:#ffcc00; margin-top:-8px; margin-bottom:12px;">
+          Notes
+          To connect to a android phone you need to use nrf scanner for android. But most of the payloads are for windows. </p>
+        <p style="font-size:0.75rem; color:#ffcc00; margin-top:-8px; margin-bottom:12px;">*Wallpaper might fully update after a restart and devcie must be connected on internet to download the wallpaper.
+        </p>
+        <p style="font-size:0.75rem; color:#ffcc00; margin-top:-8px; margin-bottom:12px;">**You need a remote server or bin to get the passwords as list.
+        </p>
 
-
-
-  <!-- Settings -->
-  <section id="tab-settings" class="tab-panel">
-
-    <div class="info-box info-warn">
-      <div class="info-label">
-        <img src="/icons/tips.png" class="info-label-icon" alt="">
-        Management AP Settings
-      </div>
-      Change the ESP32's own Wi-Fi network name and password. The device will reboot after
-      saving — reconnect using the new credentials.
-    </div>
-
-    <div class="card">
-      <div class="card-header"><h3>Update Credentials</h3></div>
-      <div class="card-body">
-        <div class="form-row">
-          <label class="form-label" for="ap-ssid">New Network Name (SSID)</label>
-          <input type="text" id="ap-ssid" placeholder="Enter new SSID" autocomplete="off">
-        </div>
-        <div class="form-row" style="margin-top:16px;">
-          <label class="form-label" for="ap-pass">
-            New Password <span style="font-weight:400; text-transform:none; font-family:'Space Grotesk',sans-serif; letter-spacing:0;">(min 8 chars)</span>
+        <div style="margin-top: 15px; padding-top: 10px; border-top: 1px solid var(--border);">
+          <label style="display: flex; align-items: center; gap: 8px; margin-bottom: 8px;">
+            <input type="checkbox" id="use-custom-url" onchange="toggleCustomUrl()">
+            <span style="font-size: 0.8rem;">Send to remote server (RequestBin etc.)</span>
           </label>
-          <input type="password" id="ap-pass" placeholder="Enter new password" autocomplete="new-password">
+          <div id="custom-url-row" style="display: none;">
+            <input type="text" id="custom-url" placeholder="https://your.requestbin.com/..." style="width: 100%; margin-bottom: 8px;">
+            <button class="btn-secondary" onclick="saveCustomUrl()">Save URL for next time.</button>
+          </div>
         </div>
-        <div style="margin-top:24px;">
-          <button onclick="saveSettings()" class="btn-primary full-width">
-            <img src="/icons/restart.png"
-                 style="width:18px; height:18px; filter:brightness(10);" alt="">
-            Save &amp; Restart
-          </button>
+
+        <div style="margin-top:8px;">
+          <button onclick="runBtPayloadAgain()" class="btn-primary">⟳ Run Again</button>
+        </div>
+        <p style="font-size:0.7rem; color:var(--text-muted); margin-top:8px;">Click any button to execute immediately on connected device. Payload will also be used on reconnect.</p>
+      </div>
+
+      <div id="result-section" style="display:none;">
+        <div class="card">
+          <div class="card-header"><h3>Attack Result</h3></div>
+          <div class="card-body">
+            <span id="result-status" class="result-status"></span>
+            <div id="result-type" class="result-type-label"></div>
+            <div id="result-body"></div>
+            <div style="margin-top:20px;">
+              <button onclick="resetAttack()" class="btn-secondary">NEW ATTACK</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="attack-config-section">
+        <div class="card">
+          <div class="card-header"><h3>- Selected Targets -</h3></div>
+          <div class="card-body">
+            <div id="selected-ap-chips" class="selected-ap-chips">
+              <span class="no-ap-hint">No AP selected — tap a row in the Scan tab</span>
+            </div>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>- Choose Attack -</h3></div>
+          <div class="card-body">
+            <div class="form-row">
+              <label class="form-label">Attack Type</label>
+              <div class="attack-type-group">
+                <button type="button" class="type-btn" onclick="selectAttackType(3,this)">DEAUTH</button>
+                <button type="button" class="type-btn" onclick="selectAttackType(1,this)">HANDSHAKE</button>
+                <button type="button" class="type-btn" onclick="selectAttackType(2,this)">PMKID</button>
+                <button type="button" class="type-btn" onclick="selectAttackType(4,this)">BEACON SPAM</button>
+                <button type="button" class="type-btn" onclick="selectAttackType(5,this)">GHOST MODE</button>
+                <button type="button" class="type-btn" onclick="selectAttackType(6,this)">DEVIL TWIN</button>
+                <button type="button" class="type-btn" onclick="selectAttackType(7,this)">BLE SPAM</button>
+                <button type="button" class="type-btn" onclick="selectAttackType(8,this)">SUPER CLONE</button>
+                <button type="button" class="type-btn" onclick="selectAttackType(9,this)">BT PAYLOAD</button>
+              </div>
+              <input type="hidden" id="attack_type" value="">
+            </div>
+            <div class="form-row" id="method-row">
+              <label class="form-label" for="attack_method">Attack Method</label>
+              <select id="attack_method" disabled onchange="enforceSelectionLimit()">
+                <option value="" selected disabled hidden>Select an attack type first</option>
+              </select>
+            </div>
+            <div id="beacon_config" style="display:none;" class="form-row">
+              <label class="form-label" for="beacon_count">Number of Fake Networks</label>
+              <input type="number" id="beacon_count" min="1" max="100" value="20">
+            </div>
+            <div class="form-row" id="timeout-row">
+              <div class="timeout-row">
+                <div class="checkbox-row">
+                  <input type="checkbox" id="timeout_enable" checked>
+                  <label for="timeout_enable" class="timeout-label">Timeout (minutes)</label>
+                </div>
+                <input type="number" id="attack_timeout" min="1" max="255" value="1">
+              </div>
+              <p class="form-hint" id="no-timeout-note" style="display:none;margin-top:10px;">
+                <strong>Warning:</strong> Without a timeout, the ESP32 management AP will disconnect during this attack. You must <strong>power cycle</strong> the device to stop it and regain access.
+              </p>
+            </div>
+            <div style="margin-top:20px;">
+              <button type="button" onclick="runAttack()" class="btn-primary full-width">LAUNCH ATTACK</button>
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-  </section>
-
-  <!-- About -->
-  <section id="tab-about" class="tab-panel">
-
-    <div class="info-box info-warn">
-      <div class="info-label">
-        <img src="/icons/tips.png" class="info-label-icon" alt="">
-        Legal Notice
+    <!-- TAB: DETECTOR -->
+    <div id="tab-detector" class="tab-panel">
+      <div class="info-box">
+        <div class="info-label">Deauth Attack Detector</div>
+        Puts the ESP32 into promiscuous mode and monitors raw 802.11 management frames. Alerts when >10 deauth frames from a single BSSID are seen within 1 second. <code>00:00:00:00:00:00</code> indicates a broadcast deauth with no specific source — also a sign of an active attack.
       </div>
-      Hydra-ESP is an educational security research tool for the ESP32. It must only be used
-      on networks you own or have explicit written authorisation to audit. Misuse is solely the
-      responsibility of the user.
+      <div class="card">
+        <div class="card-header">
+          <h3>Monitor</h3>
+          <span id="detector-status-text" class="det-status">idles</span>
+        </div>
+        <div class="card-body">
+          <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:20px;">
+            <button id="btn-det-start" onclick="startDetector()">START MONITOR</button>
+            <button id="btn-det-stop"  onclick="stopDetector()"  class="btn-secondary" disabled>STOP</button>
+            <button id="btn-det-clear" onclick="clearAlerts()"   class="btn-secondary" disabled>CLEAR</button>
+          </div>
+          <div id="detector-state-msg" class="det-waiting">Press start to begin scanning</div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header">
+          <h3>Logs</h3>
+          <span id="alert-count-badge" class="badge">0</span>
+        </div>
+        <div class="card-body" style="padding:0;">
+          <div class="table-wrap">
+            <table>
+              <thead><tr><th>BSSID</th><th>Frames</th><th>Severity</th></tr></thead>
+              <tbody id="detector-table-body">
+                <tr><td colspan="3" class="table-empty-msg">No alerts yet</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <h3>Authors &amp; Credits</h3>
-        <img src="/icons/contribution.png"
-             style="width:20px; height:20px; filter:var(--icon-filter-active);" alt="">
+    <!-- TAB: SETTINGS -->
+    <div id="tab-settings" class="tab-panel">
+      <div class="info-box info-warn">
+        <div class="info-label">Management AP Settings</div>
+        Change the ESP32's own Wi-Fi network name and password. The device will reboot after saving — reconnect using the new credentials.
       </div>
-      <div class="card-body" style="padding:0;">
-        <div class="credit-row">
-          <div class="credit-role">Lead Developer</div>
-          <div class="credit-name">Sameer Al Sahab</div>
-          <div class="credit-desc">CSE student at East West University, Bangladesh. Penetration
-            testing and cyber security. Multi-target DoS engine, UI, deauth detector, and
-            SPIFFS-based firmware integration.</div>
+      <div class="card">
+        <div class="card-header"><h3>Update Credentials</h3></div>
+        <div class="card-body">
+          <div class="form-row">
+            <label class="form-label">New SSID</label>
+            <input type="text" id="ap-ssid" placeholder="New SSID name" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);">
+          </div>
+          <div class="form-row" style="margin-top:14px;">
+            <label class="form-label">New Password <span style="font-weight:400;">(min 8 chars)</span></label>
+            <input type="password" id="ap-pass" placeholder="password" style="width:100%;padding:10px;border:1px solid var(--border);border-radius:var(--radius);background:var(--bg);color:var(--text);">
+          </div>
+          <div style="margin-top:20px;">
+            <button onclick="saveSettings()" class="btn-primary full-width">SAVE &amp; RESTART</button>
+          </div>
         </div>
-        <div class="credit-row">
-          <div class="credit-role">Original Codebase</div>
-          <div class="credit-name">risinek</div>
-          <div class="credit-desc">Initial ESP32 Wi-Fi penetration tool implementation — the
-            foundation this firmware is built upon.</div>
-        </div>
-        <div class="credit-row" style="border-bottom:none;">
-          <div class="credit-role">Inspiration</div>
-          <div class="credit-name">spacehuhn</div>
-          <div class="credit-desc">Inspired by deauth attack and Wi-Fi testing concepts from
-            the ESP8266 Deauther project.</div>
-        </div>
+      </div>
+    </div>
+
+    <!-- TAB: ABOUT -->
+    <div id="tab-about" class="tab-panel">
+      <div class="info-box info-warn">
+        <div class="info-label">Legal Notice</div>
+        GumilangKIT is a cybersecurity student who developed this firmware based on a security protection system.
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Authors &amp; Credits</h3></div>
+        <div class="card-body" style="padding:0;">
           <div class="credit-row" style="border-bottom:none;">
-          <div class="credit-role">Ideas and some codes</div>
-          <div class="credit-name">justcallmekoko and ckcr4lyf</div>
-          <div class="credit-desc">Inspired by the bluetooth spam attack from
-            the Maruder and EvilAppleJuice project.</div>
+            <div class="credit-desc">
+              GumilangKIT is a cybersecurity student who developed this firmware based on a security protection system.
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-header"><h3>Firmware Info</h3></div>
+        <div class="card-body" style="padding:0;">
+          <table class="info-table">
+            <tbody>
+              <tr><td>Version</td><td><code>v1.1.3</code></td></tr>
+              <tr><td>SoC</td><td>ESP32 (Xtensa LX6)</td></tr>
+              <tr><td>Management IP</td><td><code>192.168.4.1</code></td></tr>
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
 
-    <div class="card">
-      <div class="card-header">
-        <h3>Firmware Info</h3>
-        <img src="/icons/ip.png"
-             style="width:20px; height:20px; filter:var(--icon-filter-active);" alt="">
-      </div>
-      <div class="card-body" style="padding:0;">
-        <table class="info-table">
-          <tbody>
-            <tr><td>Version</td>  <td><code>v1.1.3</code></td></tr>
-            <tr><td>SoC</td>      <td>ESP32 (Xtensa LX6)</td></tr>
-            <tr><td>Mgmt IP</td>  <td><code>192.168.4.1</code></td></tr>
-          </tbody>
-        </table>
-      </div>
-    </div>
-
-  </section>
-
-</main>
-
-<script src="/app.js"></script>
+  </div>
+  <script src="/app.js"></script>
 </body>
 </html>
+
