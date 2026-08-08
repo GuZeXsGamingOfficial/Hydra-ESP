@@ -832,7 +832,7 @@
         Captures the PMKID from the first EAPOL-Key frame — no connected client required. Works on most modern WPA2 APs.
       </div>
       <div class="info-box">
-        <div class="info-label">Beacon Spam</div>
+        <div class="info-label">Deauth All</div>
         Floods the air with fake beacon frames carrying random SSIDs, polluting Wi-Fi scan lists on nearby devices.
       </div>
       <div class="info-box">
@@ -849,7 +849,7 @@
     <div id="tab-attack" class="tab-panel">
       <div id="running-section" style="display:none;">
         <div class="running-card">
-          <!-- Beacon spam: circular timer -->
+          <!-- Deauth all: circular timer -->
           <div id="beacon-timer-wrap" style="display:none;">
             <div class="circular-timer-container">
               <svg viewBox="0 0 36 36" class="circular-chart">
@@ -1077,4 +1077,3 @@
   <script src="/app.js"></script>
 </body>
 </html>
-
