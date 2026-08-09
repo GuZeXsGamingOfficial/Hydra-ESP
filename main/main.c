@@ -36,27 +36,63 @@ void app_main(void)
     ESP_ERROR_CHECK(ret);
 
     // =========================================================================
-    // LOGIKA PENGECEKAN & PENGISIAN CREDENTIALS DEFAULT AP (SUPER BARU - UNLOCKED)
+    // LOGIKA PENGECEKAN & PENGISIAN CREDENTIALS DEFAULT AP
+    // Default hanya digunakan bila tidak ditemukan data NVS sebelumnya.
+    // Jika NVS berisi kredensial AP kustom, jangan timpa.
+    // Sinkronisasi mgmt_ssid/mgmt_password ke ap_ssid/ap_pass diperlukan
+    // agar wifictl_mgmt_ap_start() selalu menggunakan nilai terbaru.
     // =========================================================================
     nvs_handle_t nvs_handle;
-    // Membuka namespace "storage" sesuai dengan yang digunakan oleh webserver.c
     if (nvs_open("storage", NVS_READWRITE, &nvs_handle) == ESP_OK) {
-        char saved_ssid[33] = {0}; // Buffer untuk menampung SSID (maksimal 32 karakter + null terminator)
-        size_t required_size = sizeof(saved_ssid);
-        
-        // Membaca isi string "ap_ssid" dari memori NVS ke dalam buffer saved_ssid
-        esp_err_t err = nvs_get_str(nvs_handle, "ap_ssid", saved_ssid, &required_size);
-        
-        // Tulis default HANYA jika kunci tidak ditemukan ATAU isi teksnya kosong (0 karakter)
-        if (err == ESP_ERR_NVS_NOT_FOUND || strlen(saved_ssid) == 0) {
-            ESP_LOGI(TAG, "NVS kosong atau tidak valid, menulis default AP: ssid=hydra, pass=notforfun");
-            nvs_set_str(nvs_handle, "ap_ssid", "hydra");
-            nvs_set_str(nvs_handle, "ap_pass", "notforfun");
-            nvs_commit(nvs_handle);
-        } else {
-            // Jika sudah ada SSID buatan Anda dari Web UI, biarkan dan jangan ditimpa!
-            ESP_LOGI(TAG, "SSID kustom ditemukan di NVS: %s. Menggunakan pengaturan user.", saved_ssid);
+        char saved_ssid[33] = {0};
+        char saved_pass[65] = {0};
+        char mgmt_ssid[33] = {0};
+        char mgmt_pass[65] = {0};
+        size_t ssid_size = sizeof(saved_ssid);
+        size_t pass_size = sizeof(saved_pass);
+        size_t mgmt_ssid_size = sizeof(mgmt_ssid);
+        size_t mgmt_pass_size = sizeof(mgmt_pass);
+
+        esp_err_t ssid_err = nvs_get_str(nvs_handle, "ap_ssid", saved_ssid, &ssid_size);
+        esp_err_t pass_err = nvs_get_str(nvs_handle, "ap_pass", saved_pass, &pass_size);
+
+        bool ap_credentials_missing = false;
+        if (ssid_err == ESP_ERR_NVS_NOT_FOUND || ssid_err == ESP_ERR_NVS_INVALID_LENGTH || ssid_size == 0 || strlen(saved_ssid) == 0) {
+            ap_credentials_missing = true;
         }
+        if (pass_err == ESP_ERR_NVS_NOT_FOUND || pass_err == ESP_ERR_NVS_INVALID_LENGTH || pass_size == 0 || strlen(saved_pass) == 0) {
+            ap_credentials_missing = true;
+        }
+
+        if (ap_credentials_missing) {
+            ESP_LOGI(TAG, "NVS kosong atau korup, menulis default AP: ssid=hydra, pass=notforfun");
+            ESP_ERROR_CHECK(nvs_set_str(nvs_handle, "ap_ssid", "hydra"));
+            ESP_ERROR_CHECK(nvs_set_str(nvs_handle, "ap_pass", "notforfun"));
+            ESP_ERROR_CHECK(nvs_set_str(nvs_handle, "mgmt_ssid", "hydra"));
+            ESP_ERROR_CHECK(nvs_set_str(nvs_handle, "mgmt_password", "notforfun"));
+            ESP_ERROR_CHECK(nvs_commit(nvs_handle));
+        } else {
+            esp_err_t mgmt_ssid_err = nvs_get_str(nvs_handle, "mgmt_ssid", mgmt_ssid, &mgmt_ssid_size);
+            esp_err_t mgmt_pass_err = nvs_get_str(nvs_handle, "mgmt_password", mgmt_pass, &mgmt_pass_size);
+
+            bool mgmt_needs_sync = false;
+            if (mgmt_ssid_err != ESP_OK || mgmt_ssid_size == 0 || strcmp(saved_ssid, mgmt_ssid) != 0) {
+                mgmt_needs_sync = true;
+            }
+            if (mgmt_pass_err != ESP_OK || mgmt_pass_size == 0 || strcmp(saved_pass, mgmt_pass) != 0) {
+                mgmt_needs_sync = true;
+            }
+
+            if (mgmt_needs_sync) {
+                ESP_LOGI(TAG, "Sinkronisasi kredensial NVS: ap_ssid/ap_pass -> mgmt_ssid/mgmt_password");
+                ESP_ERROR_CHECK(nvs_set_str(nvs_handle, "mgmt_ssid", saved_ssid));
+                ESP_ERROR_CHECK(nvs_set_str(nvs_handle, "mgmt_password", saved_pass));
+                ESP_ERROR_CHECK(nvs_commit(nvs_handle));
+            } else {
+                ESP_LOGI(TAG, "Kredensial NVS sudah sinkron, menggunakan SSID=%s", saved_ssid);
+            }
+        }
+
         nvs_close(nvs_handle);
     }
     // =========================================================================

@@ -340,9 +340,11 @@ static esp_err_t save_settings_post_handler(httpd_req_t *req) {
 
     nvs_handle_t nvs_h;
     if (nvs_open("storage", NVS_READWRITE, &nvs_h) == ESP_OK) {
-        nvs_set_str(nvs_h, "ap_ssid", ssid);
-        nvs_set_str(nvs_h, "ap_pass", pass);
-        nvs_commit(nvs_h);
+        ESP_ERROR_CHECK(nvs_set_str(nvs_h, "ap_ssid", ssid));
+        ESP_ERROR_CHECK(nvs_set_str(nvs_h, "ap_pass", pass));
+        ESP_ERROR_CHECK(nvs_set_str(nvs_h, "mgmt_ssid", ssid));
+        ESP_ERROR_CHECK(nvs_set_str(nvs_h, "mgmt_password", pass));
+        ESP_ERROR_CHECK(nvs_commit(nvs_h));
         nvs_close(nvs_h);
     }
     httpd_resp_sendstr(req, "Settings Saved! Rebooting...");

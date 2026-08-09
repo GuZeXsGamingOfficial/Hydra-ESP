@@ -59,11 +59,16 @@ void attack_update_status(attack_state_t state) {
         hydra_display_set_attack_timeout(0);
 
         // ==========================================================
-        // FORCE RETURN: Kembalikan radio Wi-Fi ke channel acak Soft-AP 
-        // ketika status serangan berubah menjadi Selesai atau Timeout
+        // FORCE RETURN: Kembalikan radio Wi-Fi ke channel acak Soft-AP
+        // Hanya jika serangan saat ini BUKAN Evil Twin.
+        // Evil Twin harus tetap terkunci pada channel target.
         // ==========================================================
-        ESP_LOGI(TAG, "Menyelaraskan kembali radio ke channel Soft-AP acak: CH %d", current_ap_channel);
-        esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
+        if (attack_status.type != ATTACK_TYPE_EVIL_TWIN) {
+            ESP_LOGI(TAG, "Menyelaraskan kembali radio ke channel Soft-AP acak: CH %d", current_ap_channel);
+            esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
+        } else {
+            ESP_LOGI(TAG, "Evil Twin aktif: melewatkan pemulihan channel Soft-AP.");
+        }
     }
 }
 
@@ -125,8 +130,13 @@ static void attack_timeout(void* arg){
 
     // ==========================================================
     // FORCE RETURN: Pastikan channel kembali normal setelah timeout
+    // Hanya jika serangan saat ini BUKAN Evil Twin.
     // ==========================================================
-    esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
+    if (attack_status.type != ATTACK_TYPE_EVIL_TWIN) {
+        esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
+    } else {
+        ESP_LOGI(TAG, "Evil Twin aktif: tidak melakukan pemulihan channel timeout.");
+    }
 }
 
 
@@ -242,6 +252,7 @@ static void attack_request_handler(void *args, esp_event_base_t event_base, int3
 
 
 static void attack_reset_handler(void *args, esp_event_base_t event_base, int32_t event_id, void *event_data) {
+    bool was_evil_twin = (attack_status.type == ATTACK_TYPE_EVIL_TWIN);
     if(attack_status.content){
         free(attack_status.content);
         attack_status.content = NULL;
@@ -253,8 +264,13 @@ static void attack_reset_handler(void *args, esp_event_base_t event_base, int32_
 
     // ==========================================================
     // FORCE RETURN: Pastikan channel kembali normal setelah reset
+    // Hanya jika serangan sebelumnya BUKAN Evil Twin.
     // ==========================================================
-    esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
+    if (!was_evil_twin) {
+        esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
+    } else {
+        ESP_LOGI(TAG, "Evil Twin aktif saat reset: tidak memaksa pemulihan channel.");
+    }
 }
 
 void attack_init(){
