@@ -37,6 +37,11 @@
 #include "attack_bt_spam.h"
 #include "hydra_ssd1306_display.h"
 
+// ==========================================
+// INTEGRASI VARIABEL CHANNEL ACAK UTAMA
+// ==========================================
+extern uint8_t current_ap_channel; 
+
 static const char* TAG = "attack";
 static attack_status_t attack_status = { .state = READY, .type = -1, .content_size = 0, .content = NULL };
 static esp_timer_handle_t attack_timeout_handle;
@@ -52,6 +57,13 @@ void attack_update_status(attack_state_t state) {
             esp_timer_stop(attack_timeout_handle);
         }
         hydra_display_set_attack_timeout(0);
+
+        // ==========================================================
+        // FORCE RETURN: Kembalikan radio Wi-Fi ke channel acak Soft-AP 
+        // ketika status serangan berubah menjadi Selesai atau Timeout
+        // ==========================================================
+        ESP_LOGI(TAG, "Menyelaraskan kembali radio ke channel Soft-AP acak: CH %d", current_ap_channel);
+        esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
     }
 }
 
@@ -110,6 +122,11 @@ static void attack_timeout(void* arg){
         default:
             ESP_LOGE(TAG, "Unknown attack type. Cleanup skipped.");
     }
+
+    // ==========================================================
+    // FORCE RETURN: Pastikan channel kembali normal setelah timeout
+    // ==========================================================
+    esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
 }
 
 
@@ -233,6 +250,11 @@ static void attack_reset_handler(void *args, esp_event_base_t event_base, int32_
     attack_status.type = -1;
     attack_status.state = READY;
     hydra_display_set_attack_timeout(0);
+
+    // ==========================================================
+    // FORCE RETURN: Pastikan channel kembali normal setelah reset
+    // ==========================================================
+    esp_wifi_set_channel(current_ap_channel, WIFI_SECOND_CHAN_NONE);
 }
 
 void attack_init(){
