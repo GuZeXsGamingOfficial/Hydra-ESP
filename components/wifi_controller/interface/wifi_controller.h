@@ -18,6 +18,9 @@
 #include "esp_wifi_types.h"
 #include "esp_err.h"
 
+// Variabel global untuk membaca channel AP yang aktif dari file lain
+extern uint8_t current_ap_channel;
+
 // --- Fungsi Asli Risinek / Hydraproject ---
 void wifictl_ap_start(wifi_config_t *wifi_config);
 void wifictl_ap_stop();
@@ -37,9 +40,10 @@ esp_err_t wifictl_get_mgmt_creds(char *out_ssid, size_t ssid_len, char *out_pass
 
 // --- Fungsi Tambahan (Vendor Spoofing Dinamis) ---
 /**
- * @brief Mengubah OUI MAC Address AP agar menggunakan identitas vendor Huawei
- *        dengan 3 byte terakhir yang diacak secara dinamis via hardware generator.
+ * @brief Menghasilkan LAA MAC Address secara matematis dinamis.
+ *        Byte pertama dikunci agar valid standar IEEE 802.11 LAA,
+ *        sedangkan 5 byte sisanya diacak total.
  */
-void wifictl_set_vendor_huawei_random_mac(void);
+void wifictl_set_random_laa_mac(void);
 
 #endif
