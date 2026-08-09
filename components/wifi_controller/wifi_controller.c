@@ -16,6 +16,8 @@
 
 // Tambahan pustaka generator acak hardware ESP32
 #include "esp_random.h"
+// Pustaka ADC untuk True Random Entropy
+#include "driver/adc.h"
 
 static const char* TAG = "wifi_controller";
 
@@ -44,8 +46,6 @@ void wifictl_set_random_laa_mac() {
     if (esp_wifi_get_mac(WIFI_IF_AP, current_mac) == ESP_OK) {
         
         // 2. Kunci Byte Pertama (LAA Rules)
-        // esp_random() & 0xFC menghapus 2 bit terakhir, lalu di-OR dengan 0x02 
-        // Memastikan bit LAA = 1 dan Unicast = 0 (berakhiran 2, 6, A, atau E)
         current_mac[0] = (esp_random() & 0xFC) | 0x02;
         
         // 3. Acak 5 Byte sisanya secara penuh menggunakan hardware generator ESP32
@@ -98,15 +98,27 @@ void wifictl_ap_start(wifi_config_t *wifi_config) {
         wifi_init_apsta();
     }
 
-    // Jika channel belum diatur (bernilai 0 saat booting), acak antara 1 sampai 11
+    // Jika channel belum diatur (bernilai 0 saat booting), gunakan True Random (ADC Noise)
     if (current_ap_channel == 0) {
-        current_ap_channel = (esp_random() % 11) + 1;
+        // 1. Ambil kebisingan voltase (noise) dari pin ADC1_CHANNEL_0 (GPIO 36)
+        adc1_config_width(ADC_WIDTH_BIT_12);
+        adc1_config_channel_atten(ADC1_CHANNEL_0, ADC_ATTEN_DB_11);
+        int noise_seed = adc1_get_raw(ADC1_CHANNEL_0);
+
+        // 2. Kombinasikan noise ADC dengan esp_random() untuk entropi murni
+        uint32_t true_random_value = esp_random() + noise_seed;
+
+        // 3. Batasi hasil angka acak agar selalu berada di rentang Channel 1 sampai Channel 11
+        current_ap_channel = (true_random_value % 11) + 1; 
+
+        // Log ke serial monitor
+        ESP_LOGI(TAG, "[WIFI CONTROL] True Random Channel Berhasil Dihasilkan: CH %d (Noise Seed: %d)", current_ap_channel, noise_seed);
     }
     
     // Terapkan channel acak ke konfigurasi Wi-Fi
     wifi_config->ap.channel = current_ap_channel;
 
-    // Memasukkan konfigurasi wifi asli ke hardware AP
+    // Memasukkan konfigurasi wifi ke hardware AP
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, wifi_config));
     
     // Menjalankan fungsi pengacak LAA MAC Address
