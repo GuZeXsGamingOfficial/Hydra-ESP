@@ -41,4 +41,19 @@ const wifictl_ap_records_t *wifictl_get_ap_records();
  */
 const wifi_ap_record_t *wifictl_get_ap_record(unsigned index);
 
+/**
+ * @brief Returns the count of scanned APs.
+ * 
+ * @return uint16_t
+ */
+uint16_t ap_scanner_get_count(void);
+
+/**
+ * @brief Returns AP record on given index.
+ * 
+ * @param index
+ * @return const wifi_ap_record_t*
+ */
+const wifi_ap_record_t *ap_scanner_get_record(unsigned index);
+
 #endif
